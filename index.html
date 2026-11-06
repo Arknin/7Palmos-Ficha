@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ficha de Personagem</title>
+<meta name="description" content="Ficha virtual de personagem">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%93%9C%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050506;--panel:#0f1012;--line:#ffffff2e;--txt:#ece7da;--mut:#7f8386;--gold:#d8c9a3;--tn:#ff5a5f;--sn:#5aa9ff;
+--l0:#4a4f53;--l1:#4fc27f;--l2:#4c9aff;--l3:#a56cf0;--l4:#e8b53c;
+--disp:'Cormorant Garamond','Cinzel',Georgia,serif;--logo:'Cinzel',Georgia,serif;--sans:'Barlow',system-ui,sans-serif;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{color-scheme:dark;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:radial-gradient(ellipse at 30% 0,#14161a,var(--bg) 60%);color:var(--txt);font:15px/1.5 var(--sans);padding:14px;min-height:100vh}
+input,select,textarea,button{font:inherit;color:inherit}
+input,textarea,select{background:transparent;border:0;border-bottom:1px solid transparent;outline:0;min-width:0}
+input:hover,textarea:hover,input:focus,textarea:focus,select:hover,select:focus{border-bottom-color:var(--mut)}
+button,a{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.frame{max-width:1180px;margin:auto;border:1px solid var(--line);padding:30px 34px;position:relative}
+.frame::before{content:"";position:absolute;inset:6px;border:1px solid #ffffff14;pointer-events:none}
+[hidden]{display:none!important}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin-bottom:14px}.rule{height:1px;margin:0 0 26px;background:linear-gradient(90deg,transparent,#ffffff55 12%,#ffffff55 88%,transparent)}.rres{margin-top:8px;font-size:13px;color:var(--mut)}.rres div:first-child{color:var(--txt)}.rres b{font:700 24px var(--disp);color:var(--gold)}.add label{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mut)}
+#name{font:500 clamp(28px,5vw,44px)/1.1 var(--logo);letter-spacing:.14em;flex:1 1 280px}
+.tag{font:600 12px var(--sans);letter-spacing:.08em;background:#2f7d4f;color:#eafff1;padding:3px 12px;border-radius:3px}
+#apt{width:auto;text-align:center;text-transform:uppercase;border:0;appearance:none;-webkit-appearance:none;cursor:pointer;color-scheme:dark}
+.ghost{display:flex;gap:10px;align-items:center;opacity:0;transition:opacity .2s;font:600 14px var(--disp)}
+.ghost:hover,.ghost:focus-within{opacity:1}
+.ghost input,.ghost select{background:var(--panel);border:1px solid var(--line);padding:2px 8px;border-radius:3px;color-scheme:dark}
+.nav{border:1px solid var(--gold);color:var(--gold);background:none;padding:5px 14px;border-radius:3px;text-decoration:none;font:600 14px var(--disp);letter-spacing:.06em}
+.nav:hover{background:#d8c9a31a}
+h2{font:700 22px var(--disp);letter-spacing:.12em;color:var(--gold);margin:0 0 12px;text-transform:uppercase}
+.main{display:grid;grid-template-columns:1fr minmax(260px,390px);gap:30px}
+.top{display:flex;flex-wrap:wrap;gap:30px 56px;margin-bottom:28px}
+.at{display:grid;grid-template-columns:150px auto auto auto 66px auto;align-items:center;gap:8px;padding:2px 0}
+.an{font:italic 700 25px/1.2 var(--disp)}
+.ch{border:1px solid var(--line);background:var(--panel);color:var(--txt);font:700 17px var(--sans);min-width:30px;height:30px;display:grid;place-items:center;border-radius:5px}
+.sm{width:24px;height:24px;border:1px solid var(--line);background:none;border-radius:50%;line-height:1;color:var(--mut)}
+.sm:hover:not(:disabled){color:var(--txt);border-color:var(--txt)}
+.sm:disabled{opacity:.25;cursor:not-allowed}
+.mod{color:var(--mut);font-size:13px;text-align:right}
+.d{border:1px solid var(--line);background:none;border-radius:4px;font:600 11px var(--sans);padding:3px 6px;color:var(--mut)}
+.d:hover{color:var(--gold);border-color:var(--gold)}
+.pool{margin-top:8px;font-size:13px;color:var(--mut);max-width:430px}
+.pool b{color:var(--gold);font-size:17px}
+.link{background:none;border:0;color:var(--sn);text-decoration:underline;padding:0}
+.vit{display:flex;flex-direction:column;gap:6px}
+.vital{display:flex;align-items:baseline;gap:12px;font:600 30px var(--disp)}
+.vital span{font:700 46px/1 var(--disp)}
+.skills{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+.sk{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:7px;padding:2px 0;border-bottom:1px solid #ffffff0d}
+.sk .n{font:italic 600 17px var(--disp);cursor:pointer}
+.die{background:none;border:0;padding:0;width:36px;height:36px;position:relative;color:var(--c,var(--mut))}.die svg{width:100%;height:100%;display:block}.die b{position:absolute;inset:0;display:grid;place-items:center;font:700 11px var(--sans);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}.die.spin svg{animation:sp .7s ease-in-out}@keyframes sp{to{transform:rotate(720deg) scale(1.15)}}@media(prefers-reduced-motion:reduce){.die.spin svg{animation:none}}
+.star{color:var(--gold);margin-left:2px}
+.sq{border:1px solid var(--line);width:22px;height:22px;border-radius:4px;display:grid;place-items:center;color:var(--txt);font:700 12px var(--sans)}
+.ab{background:none;border:0;color:var(--mut);font:500 10px var(--sans);width:28px;padding:0;text-align:left}
+.x{background:none;border:0;color:var(--mut);font-size:15px;padding:0 4px}
+.add{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;max-width:480px}
+.add input,.add select{background:var(--panel);border:1px solid var(--line);padding:4px 8px;flex:1 1 100px;border-radius:3px}
+.btn{background:none;border:1px solid var(--line);padding:4px 14px;border-radius:3px;color:var(--txt)}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.leg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;font-size:12px;color:var(--mut)}
+.leg i{display:inline-block;width:10px;height:11px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--c);margin-right:5px}
+.tal{border-left:2px solid var(--gold);padding:4px 12px;margin-bottom:14px;position:relative}
+.tal input{width:calc(100% - 28px);font:700 20px var(--disp)}
+.tal textarea{width:100%;resize:vertical;min-height:58px;color:#c9c5ba;display:block}
+.tal .x{position:absolute;top:4px;right:0}
+.art{display:block;position:relative;cursor:pointer;min-height:300px;border:1px dashed #ffffff22;text-align:center;overflow:hidden}
+.art span{position:absolute;inset:0;display:grid;place-items:center;color:#ffffff3a;font-size:14px;padding:20px}
+.art input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.art img{display:block;width:100%;height:auto;-webkit-mask-image:linear-gradient(to right,transparent,#000 22%);mask-image:linear-gradient(to right,transparent,#000 22%)}
+.art.has{border:0;min-height:0}
+.rm{margin-top:6px}#part img{-webkit-mask-image:none;mask-image:none}.tal .tg{width:15px;height:15px;accent-color:var(--gold);vertical-align:middle;margin-right:4px}.bw{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}.bw select,.bw input{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:2px 6px;font:500 13px var(--sans)}.bw select{max-width:62%}.tal .bw input,.layer .bw input{width:64px;display:inline-block;margin:0;font:500 13px var(--sans)}.tgl{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:4px;margin-top:4px}.layer .tgl input,.tal .tgl input{width:15px;display:inline-block;margin:0}.st{display:flex;align-items:center;gap:6px}.st .sname{font:italic 600 18px var(--disp);color:var(--txt);white-space:nowrap;min-width:176px;text-align:center}.arw{background:none;border:0;padding:0;width:42px;height:24px;cursor:pointer}.arw img{width:100%;height:100%;object-fit:contain;display:block}.arw.r img{transform:scaleX(-1)}.arw:disabled{opacity:.2;cursor:not-allowed}.arw:hover:not(:disabled) img{filter:brightness(1.25)}.vital{flex-wrap:wrap}.bn{font-style:italic;color:var(--mut);font-size:12px;font-weight:400}.tt{font:700 20px var(--disp)}.tt small{font:500 11px var(--sans);color:var(--mut)}.td{color:#c9c5ba}.paths{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}.pc{border:1px solid var(--line);padding:10px;text-align:center;display:flex;flex-direction:column;gap:8px}.pc.off{opacity:.3}.pc b{min-height:2.7em;display:flex;align-items:center;justify-content:center;line-height:1.3}.pc .btn{margin-top:auto}.pi{aspect-ratio:1;border-radius:50%;background:#ffffff08;overflow:hidden}.pi img{width:100%;height:100%;object-fit:cover;display:block}.lk{font-size:12px;color:var(--mut);text-decoration:underline;cursor:pointer}.ptop{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}.ptop h2{margin:0}.layer h4{font:600 15px var(--disp);color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 4px}.it{margin-bottom:8px;position:relative}.it b{font:700 18px var(--disp)}.it .x{position:absolute;top:0;right:0}details{margin-top:4px;color:#b5b2a8;font-size:14px}summary{cursor:pointer;color:var(--mut);font-style:italic}details p{margin:4px 0}.bonus{font-style:italic;color:var(--mut);font-size:13px;margin-top:8px}.dim{opacity:.55}.layer input,.layer textarea{width:100%;display:block;background:var(--panel);border:1px solid var(--line);padding:4px 8px;border-radius:3px;margin:3px 0}.layer textarea{min-height:50px;resize:vertical}.edtools{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap}.edtools textarea{width:100%;background:var(--panel);border:1px solid var(--line)}
+.side{position:sticky;top:14px;align-self:start}
+.log{position:sticky;bottom:10px;margin:22px auto 0;max-width:620px;background:#000d;border:1px solid var(--line);padding:8px 14px;text-align:center;border-radius:4px;font-size:14px}
+.log b{font:700 24px var(--disp);color:var(--gold)}
+.crit{color:var(--l1)}.fail{color:var(--tn)}
+.layer{margin-bottom:28px}
+.layer h3{font:700 24px var(--disp);margin:0 0 10px;display:flex;align-items:center;gap:12px;letter-spacing:.05em}
+.layer h3::after{content:"";flex:1;height:1px;background:var(--line)}
+.pgrid{display:grid;grid-template-columns:minmax(240px,380px) 1fr;gap:34px}
+@media(max-width:900px){.main,.pgrid{grid-template-columns:1fr}.frame{padding:20px 16px}.side{position:static;order:-1}.skills{grid-template-columns:1fr}.at{grid-template-columns:110px auto auto auto 58px auto}.an{font-size:21px}}
+</style>
+</head>
+<body>
+<main class="frame" id="v-ficha">
+<header>
+  <input id="name" placeholder="NOME" aria-label="Nome">
+  <select id="apt" class="tag" aria-label="Aptidão"></select>
+  <div class="ghost"><input id="pocao" readonly placeholder="Poção atual" aria-label="Nome da poção atual"><label>Camada <select id="camada" aria-label="Camada atual"></select></label></div>
+  <a class="nav" href="#pocao">Habilidades da Poção</a>
+</header>
+<div class="rule"></div>
+
+<div class="main">
+  <div>
+    <div class="top">
+      <div>
+        <h2>Atributos</h2>
+        <div id="attrs"></div>
+        <div class="pool" id="pool"></div>
+      </div>
+      <div class="vit">
+        <div class="vital" style="color:var(--tn)">TN <span id="tn"></span><div class="st" id="stt"></div></div>
+        <div class="vital" style="color:var(--sn)">SN <span id="sn"></span><div class="st" id="sts"></div></div>
+      </div>
+    </div>
+    <h2>Perícias</h2>
+    <div class="skills"><div id="sk1"></div><div id="sk2"></div></div>
+    <div class="add">
+      <input id="nsk" placeholder="Nova perícia" aria-label="Nome da nova perícia">
+      <select id="nsa" aria-label="Atributo da nova perícia"></select>
+      <label><input type="checkbox" id="nsp"> Especial</label><button class="btn" id="addsk">Adicionar</button>
+    </div>
+    <div class="leg" id="leg"></div>
+    <h2 style="margin-top:34px">Talentos</h2>
+    <div id="tals"></div>
+    <button class="btn" id="addtal">Adicionar talento</button>
+  </div>
+  <aside class="side">
+    <label class="art" id="art"><span>Adicionar imagem (PNG)</span><img alt="Imagem do personagem" hidden><input type="file" accept="image/*"></label>
+    <button class="btn rm" id="rm" hidden>Remover imagem</button>
+    <div class="roller"><h2 style="font-size:18px;margin-top:20px">Rolagem</h2><div class="add" style="margin-top:0"><input id="expr" value="1d20" placeholder="2d10+3, (1d8+2)*2" aria-label="Expressão de dados"><button class="btn" id="rollx">Rolar</button></div><div id="rres" class="rres" aria-live="polite"></div></div>
+  </aside>
+</div>
+</main>
+
+<main class="frame" id="v-pocao" hidden>
+<header>
+  <a class="nav" href="#ficha">Voltar à ficha</a>
+  <h2 style="margin:0;font-size:30px">Habilidades da Poção</h2>
+</header>
+<div class="rule"></div>
+<div id="pick"></div>
+<div class="pgrid" id="pg">
+  <div>
+    <label class="art" id="part"><span>Adicionar imagem (PNG)</span><img alt="Imagem da poção" hidden><input type="file" accept="image/*"></label>
+    <button class="btn rm" id="prm" hidden>Remover imagem</button>
+  </div>
+  <div id="layers"></div>
+</div>
+</main>
+<div class="log" id="log" role="status" aria-live="polite" hidden></div>
+
+<script>
+const A=[['combate','Combate','COM','#ef5350'],['fisico','Físico','FÍS','#f39a3d'],['agilidade','Agilidade','AGI','#e6d44a'],['percepcao','Percepção','PER','#3fc9c0'],['inteligencia','Inteligência','INT','#4c9aff'],['vontade','Vontade','VON','#a56cf0'],['carisma','Carisma','CAR','#ec6fb0']];
+const LV=['Destreinado','Aprendiz','Apto','Mestre','Grão-Mestre'];
+const SK=[['Adestrar','carisma'],['Alquimia','inteligencia',1],['Apostar','inteligencia'],['Atletismo','fisico'],['Barganha','carisma'],['Corpo a Corpo Marcial','combate'],['Corpo a Corpo Simples','combate'],['Coordenação','agilidade'],['Dedução','inteligencia'],['Demolição','inteligencia',1],['Discernir','percepcao'],['Disfarçar','carisma'],['Disparo Marcial','agilidade',1],['Disparo Simples','agilidade',1],['Educação','inteligencia'],['Encanto','carisma'],['Escutar','percepcao'],['Escrutinar','percepcao'],['Falsificar','inteligencia',1],['Furtividade','agilidade'],['Guerrilha','inteligencia',1],['Interrogar','vontade'],['Intimidar','vontade'],['Investigar','percepcao'],['Lábia','carisma'],['Liderar','carisma',1],['Malícia','carisma'],['Manufaturar','inteligencia'],['Medicina','inteligencia',1],['Misticismo','percepcao',1],['Navegação','inteligencia',1],['Pilotagem','agilidade'],['Prestidigitação','agilidade',1],['Sobrevivência','percepcao'],['Tenacidade','fisico'],['Virtude','vontade'],['Vivência','inteligencia']];
+const DIE='<svg viewBox="0 0 40 40" fill="currentColor" stroke="#050506" stroke-width="1.6" stroke-linejoin="round"><path d="M20 2 36 11v18L20 38 4 29V11z"/><path d="M20 13 31 28H9z" fill="none"/><path d="M20 2v11M36 11 31 28 36 29M4 11l5 17-5 1M9 28l11 10 11-10" fill="none"/></svg>';
+const L=[9,8,7,6,5,4,3,2,1,0];
+const APT={Policial:[['Sono Leve','Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.'],['Olho de Águia','Você não sofre desvantagem enquanto atira com uma arma de fogo a média distância, tratando isso como curta distância.'],['Postura Amedrontadora','Quando você faz um teste para intimidar um alvo você ganha +2 no teste de Intimidação.','Intimidar+2']],Ladrão:[['Discreto','Você sempre passa em testes de Prestidigitação para esconder objetos não maiores do que uma faca de uma pessoa comum.'],['Arrombador','Enquanto tentando abrir uma fechadura você ganha +2 no teste de Prestidigitação.','Prestidigitação+2'],['Sabedoria das Ruas','Enquanto lidando com produtos do mercado negro ou procurando informações ilegais, você ganha +2 no teste de barganha.','Barganha+2']],Erudito:[['Sono Leve','Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.'],['Multilinguística','Você sabe um pouco sobre todas as línguas, permitindo você fazer teste para decifrar todas elas ou alguém falando elas. Em contraponto, você pode escolher 1 língua para dominar, se tornando fluente nela, mas você perde o efeito anterior.'],['Operador','Quando você rola um teste para controlar um máquina ou calcular a distância exata para ela acertar alguém você ganha +2 no teste de Guerrilha','Guerrilha+2']]};
+const PATHS={arbitro:{
+9:{n:'Árbitro',bon:'Carisma+2;teste:Carisma+2',ch:[{t:'Ordem',d:'Um Árbitro manterá subconscientemente a Ordem vigente, sem desejar perturbar sua estrutura.'}],hab:[{t:'Autoridade',d:'Os árbitros possuem um charme convincente e têm uma autoridade considerável, fazendo com que as pessoas sejam mais propensas a acreditar e obedecer aos seus comandos e palavras.'}],mel:[]},
+8:{n:'Xerife',bon:'Físico+2;Investigar+2',ch:[{d:'Eles possuem intuição e percepção espiritual adequadas para um oficial de segurança pública.',h:'Graças aos seus sentidos sobrenaturais como xerifes, e portanto que a distância entre eles não seja muito grande, eles conseguem ter uma vaga noção da localização atual e da localização predeterminada do alvo.\nEles conseguem detectar quaisquer anormalidades e captar pistas sutis. Quando combinada com a habilidade de Reconhecimento, essa capacidade permite que realizem varreduras investigativas de maneira bastante eficaz.\nQuando a distância entre eles e uma anomalia é suficientemente pequena, eles conseguem sentir coisas desprotegidas relacionadas ao Mal, à Desordem e à Loucura.\nOs xerifes possuem uma intuição aguçada para monitorar os outros e para serem monitorados por eles.'},{t:'Aprimoramento Físico',d:'Sua constituição física é efetivamente aprimorada.'}],hab:[{t:'Jurisdição',d:'Um xerife pode designar uma área como sua jurisdição.',h:'Um xerife e sua própria área de jurisdição estão sempre interligados.\nQuanto mais familiarizados estiverem com o local e quanto mais confiança ou apoio receberem das pessoas que ali vivem, mais poderão exercer habilidades além de suas próprias capacidades e receber alguma ajuda do ambiente.\nUma vez que ultrapassem o alcance de sua Jurisdição, ou se acabaram de adquiri-la e ainda não estão familiarizados com ela, só podem contar com seus próprios poderes Beyonder.\nSua área de jurisdição tem aproximadamente o tamanho de uma pequena cidade.\nCaso recebam uma nomeação oficial das autoridades, a área sob sua administração poderá ser maior, mas não poderá exceder 5 vezes o limite normal.'},{t:'Reconhecimento',d:'Contanto que vejam uma pessoa ao vivo, em uma foto ou em um desenho, eles serão capazes de se lembrar firmemente da aparência do alvo e obter uma percepção adicional em um nível extraordinário.'},{t:'Proficiência em Armas',d:'Um xerife também adquiriu proficiência em armas brancas portáteis e armas de fogo portáteis, como pistolas e espingardas.'}],mel:[]},
+7:{n:'Interrogador',bon:'Físico+1;Demolição+2;mestre:Demolição',ch:[{t:'Aprimoramento Físico',d:'Seus corpos melhoram até certo ponto.'}],hab:[{t:'Dispositivos de Tortura Ilusórios',d:'Eles podem invocar dispositivos de tortura ilusórios (como ferros de marcar) em suas mãos que podem danificar diretamente o Corpo Espiritual; no entanto, deve haver contato físico, pois esses dispositivos não podem ser usados à distância.'},{t:'Chicote Psíquico',d:'Eles podem revestir suas armas com raios ilusórios que lhes permitem transformar armas frias comuns em coisas capazes de afetar criaturas do tipo Corpo Espiritual.'},{t:'Perfuração Psíquica',d:'Este poder Beyonder faz com que raios apareçam dentro e disparem de seus olhos para atacar seu alvo a uma distância efetiva de 5 metros.',h:'Pode exercer pressão sobre o Corpo Espiritual, concentrar a mente, ignorar o corpo físico, perfurar a Alma do alvo e atacar diretamente o seu Corpo Espiritual, causando dor insuportável.\nA Perfuração Psíquica não é um poder Beyonder que interfere com pensamentos ou afeta a mente, mas sim um meio de atacar diretamente o Corpo Espiritual. Em essência, enquanto outras habilidades atuam no Corpo do Coração e da Mente, o alvo da Perfuração Psíquica é o Corpo da Alma; os dois são significativamente diferentes.'},{t:'Chicote da Dor',d:'Isso ataca diretamente a mente, fazendo o alvo sentir como se uma corrente elétrica estivesse passando por sua mente, formando um chicote farpado que açoita constantemente sua Alma.',h:'Essa “sensação” é ao mesmo tempo dolorosa e entorpecente, como se viesse das profundezas do cérebro, tornando-a irresistível. A pessoa afetada só consegue tremer, com as pernas bambas, e precisa confessar, mas também não ousa mentir.'},{t:'Proficiência em Demolição',d:'Eles também se tornaram especialistas em demolição.'}],mel:[{t:'Proficiência em Armas',d:'Eles são proficientes no uso de todo tipo de armas.'}]}
+},saqueador:{},erudito:{}};
+let S={name:'',apt:'',pocao:'',camada:9,free:false,attrs:Object.fromEntries(A.map(a=>[a[0],1])),skills:SK.map(s=>({n:s[0],a:s[1],sp:s[2]||0,l:0,c:0})),tals:[{t:'',d:''}],img:'',path:'',pimgs:{},pd:{},edit:0,toff:{},ten:0,sn:0};
+try{const r=localStorage.getItem('ficha3')||localStorage.getItem('ficha2');if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+{const old=S.skills;S.skills=SK.map(s=>{const o=old.find(x=>x.n===s[0]);return o?Object.assign(o,{sp:s[2]||0}):{n:s[0],a:s[1],sp:s[2]||0,l:0,c:0}}).concat(old.filter(x=>x.c));if(!APT[S.apt])S.apt=''}
+const $=id=>document.getElementById(id);
+const save=()=>{try{localStorage.setItem('ficha3',JSON.stringify(S))}catch(e){}};
+const mod=v=>v<=0?-1:Math.min(3,Math.floor(v/2));
+const fm=n=>(n>=0?'+':'−')+Math.abs(n);
+const pool=()=>{const v=Object.values(S.attrs);return 17+2*v.filter(x=>x===0).length-v.reduce((s,x)=>s+Math.max(0,x-1),0)};
+const AI=k=>A.find(a=>a[0]===k);
+const nz=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const lay=(p,n)=>(S.pd[p]||{})[n]||(PATHS[p]||{})[n]||{n:'',ch:[],hab:[],mel:[],bon:''};
+const curName=()=>S.path?lay(S.path,S.camada).n||'':'';
+let BN={at:{},sk:{},ts:{},ms:[]},SP=0;
+function bonus(){const B={at:{},sk:{},ts:{},ms:[]};const src=[];if(S.path)L.filter(n=>n>=S.camada).forEach(n=>{const y=lay(S.path,n);src.push(y.bon||'');SEC.forEach(([k])=>(y[k]||[]).forEach(it=>src.push(it.bon||'')))});(APT[S.apt]||[]).forEach((t,i)=>{if(!S.toff[S.apt+i])src.push(t[2]||'')});S.tals.forEach(t=>{if(t.bon&&!t.off)src.push(t.bon)});
+  src.join(';').split(';').forEach(x=>{x=nz(x);if(!x)return;
+    if(x.startsWith('mestre:'))return void B.ms.push(x.slice(7).trim());
+    const ts=x.startsWith('teste:');if(ts)x=x.slice(6);
+    const m=/^(.+?)([+-]\d+)$/.exec(x);if(!m)return;const k=m[1].trim(),v=+m[2],a=A.find(a=>a[0]===k);
+    if(a){const o=ts?B.ts:B.at;o[a[0]]=(o[a[0]]||0)+v}else if(!ts)B.sk[k]=(B.sk[k]||0)+v});
+  return B}
+const mk=(tag,cls,html)=>{const e=document.createElement(tag);e.className=cls;e.innerHTML=html;return e};
+
+function adj(k,d){const v=S.attrs[k];
+  if(d>0){if(v>=10)return;if(!S.free&&(v===0||pool()<=0))return}else if(v<=0)return;
+  S.attrs[k]=v+d;render()}
+
+function roll(btn,label,m,b,sp){btn.classList.add('spin');setTimeout(()=>{btn.classList.remove('spin');
+  const d=1+Math.floor(Math.random()*20),p=sp?1+Math.floor(Math.random()*6):0,t=d+m+b-p,c=d===20?'crit':d===1?'fail':'',g=$('log');
+  btn.querySelector('b').textContent=t;g.hidden=false;
+  g.innerHTML=`${label}${sp?' (desvantagem)':''}: d20 (<span class="${c}">${d}</span>) ${fm(m)} atributo ${b?fm(b)+' bônus ':''}${p?'− d6 ('+p+') ':''}= <b>${t}</b>${d===20?' · 20 natural':d===1?' · 1 natural':''}`},700)}
+
+function rollExpr(src){const det=[];let s=src.replace(/\s+/g,'').toLowerCase().replace(/,/g,'.').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+  s=s.replace(/(\d*)d(\d+)/g,(_,n,f)=>{n=+n||1;f=+f;if(n>100||f>1000||f<1)throw 0;const r=[];for(let i=0;i<n;i++)r.push(1+Math.floor(Math.random()*f));det.push(`${n}d${f} [${r.join(', ')}]`);return r.reduce((a,b)=>a+b,0)});
+  let i=0;const pk=()=>s[i];
+  const ex=()=>{let v=tm();while(pk()==='+'||pk()==='-'){const o=s[i++],r=tm();v=o==='+'?v+r:v-r}return v};
+  const tm=()=>{let v=fc();while(pk()==='*'||pk()==='/'){const o=s[i++],r=fc();if(o==='/'&&r===0)throw 0;v=o==='*'?v*r:v/r}return v};
+  const fc=()=>{if(pk()==='-'){i++;return -fc()}if(pk()==='('){i++;const v=ex();if(pk()!==')')throw 0;i++;return v}const m=/^\d+(\.\d+)?/.exec(s.slice(i));if(!m)throw 0;i+=m[0].length;return +m[0]};
+  const v=ex();if(i<s.length)throw 0;return{v:Math.round(v*100)/100,det}}
+const hist=[],esc=t=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function doRoll(){const src=$('expr').value.trim();let r;
+  try{r=rollExpr(src)}catch(e){$('rres').innerHTML='<div>Expressão inválida. Exemplos: 1d6, 2d10+3, (1d8+2)*2</div>';return}
+  hist.unshift(`${esc(src)}${r.det.length?' · '+r.det.join(' ; '):''}`);hist.length=Math.min(hist.length,5);
+  $('rres').innerHTML=hist.map((h,k)=>k?`<div>${h}</div>`:`<div><b>${r.v}</b> ${h}</div>`).join('')}
+
+const TS=['Imaculado','Ferimento Leve','Ferimento Moderado','Ferimento Sério','Ferimento Grave','Morto!'],SS=['Lúcido','Exposto','Perturbado','Instável','Descontrole Iminente','Perda de Controle'];
+function stEl(h,list,key){h.innerHTML=`<button class="arw" aria-label="Estado anterior"><img src="${ARW}" alt=""></button><i class="sname">${list[S[key]]}</i><button class="arw r" aria-label="Próximo estado"><img src="${ARW}" alt=""></button>`;
+  const b=h.querySelectorAll('button');b[0].disabled=S[key]<=0;b[1].disabled=S[key]>=5;b[0].onclick=()=>{S[key]--;render()};b[1].onclick=()=>{S[key]++;render()}}
+function bwidget(bon,cb){const m=/^(.*?)([+-]\d+)$/.exec((bon||'').split(';')[0].trim());
+  const w=mk('div','bw','<select aria-label="Perícia do bônus"></select><input type="number" aria-label="Valor do bônus" value="2">');const sel=w.children[0],num=w.children[1];
+  sel.innerHTML='<option value="">Sem bônus de perícia</option>'+S.skills.map(k=>`<option>${esc(k.n)}</option>`).join('');
+  if(m){sel.value=m[1];num.value=+m[2]}
+  sel.onchange=num.onchange=()=>{const n=Math.trunc(+num.value)||0;cb(sel.value?`${sel.value}${n>=0?'+':''}${n}`:'')};return w}
+function talents(host,arr,onchange){host.innerHTML='';
+  arr.forEach((t,i)=>{const e=mk('div','tal',`<input placeholder="Título" aria-label="Título"><button class="x" aria-label="Remover">×</button><textarea placeholder="Descrição" aria-label="Descrição"></textarea>`);
+    const [ti,x,de]=e.children;ti.value=t.t;de.value=t.d;
+    ti.oninput=()=>{t.t=ti.value;save()};de.oninput=()=>{t.d=de.value;save()};
+    x.onclick=()=>{arr.splice(i,1);onchange()};
+    const w=bwidget(t.bon,v=>{t.bon=v;if(!v)t.off=0;save();onchange()});
+    if(t.bon){const c=mk('label','tgl',`<input type="checkbox" class="tg" ${t.off?'':'checked'}> ativo`);c.firstChild.onchange=ev=>{t.off=ev.target.checked?0:1;onchange()};w.append(c)}
+    e.append(w);host.append(e)})}
+
+function img(box,src){const b=$(box),im=b.querySelector('img');b.classList.toggle('has',!!src);im.hidden=!src;if(src)im.src=src;b.querySelector('span').hidden=!!src}
+function bindImg(box,key,rm){$(box).querySelector('input').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{S[key]=r.result;render()};r.readAsDataURL(f)};$(rm).onclick=()=>{S[key]='';render()}}
+
+function render(){
+  $('name').value=S.name;$('apt').value=S.apt;$('pocao').value=curName();BN=bonus();SP=Math.min(3,Math.max(0,S.sn-1));document.querySelector('.ghost').style.opacity=S.path?1:'';$('camada').value=S.camada;
+  $('attrs').innerHTML='';
+  A.forEach(([k,n])=>{const v=S.attrs[k],e=v+(BN.at[k]||0),t=BN.ts[k]||0;
+    const r=mk('div','at',`<span class="an">${n}</span><button class="sm" aria-label="Diminuir ${n}" ${v<=0?'disabled':''}>−</button><span class="ch">${e}</span><button class="sm" aria-label="Aumentar ${n}" ${v>=10||(!S.free&&(v===0||pool()<=0))?'disabled':''}>+</button><span class="mod">${fm(mod(e))}${BN.at[k]?` <i class="bn">+${BN.at[k]}</i>`:''}</span><button class="die" aria-label="Rolar ${n}">${DIE}<b></b></button>`);
+    const b=r.querySelectorAll('button');b[0].onclick=()=>adj(k,-1);b[1].onclick=()=>adj(k,1);b[2].onclick=()=>roll(b[2],n,mod(e),t,0);
+    $('attrs').append(r)});
+  $('pool').innerHTML=S.free?`Edição livre · <button class="link" id="tg">voltar à distribuição</button>`:`Pontos restantes: <b>${pool()}</b> · atributos zerados ficam travados · <button class="link" id="tg">encerrar distribuição</button>`;
+  $('tg').onclick=()=>{S.free=!S.free;render()};
+  $('tn').textContent=3+S.attrs.fisico+(BN.at.fisico||0);$('sn').textContent=3+S.attrs.vontade+(BN.at.vontade||0);stEl($('stt'),TS,'ten');stEl($('sts'),SS,'sn');
+  $('sk1').innerHTML=$('sk2').innerHTML='';
+  const half=Math.ceil(S.skills.length/2);
+  S.skills.forEach((s,i)=>{const [,an,ab]=AI(s.a),l0=BN.ms.includes(nz(s.n))?Math.max(s.l,3):s.l,lv=Math.max(0,l0-SP),pb=(BN.sk[nz(s.n)]||0)+(BN.ts[s.a]||0),ea=S.attrs[s.a]+(BN.at[s.a]||0);
+    const r=mk('div','sk',`<span class="n" title="${LV[s.l]} · clique para mudar o nível">${s.n}${s.sp?'<span class="star">*</span>':''}${pb?`<i class="bn"> +${pb}</i>`:''}${lv<l0?`<i class="bn" title="Nível reduzido pela Sanidade"> ▼${l0-lv}</i>`:''}${s.c?'<button class="x" aria-label="Remover perícia">×</button>':''}</span><button class="die" style="--c:var(--l${lv})" aria-label="Rolar ${s.n} (${LV[lv]})">${DIE}<b></b></button><span class="sq" title="${an}">${ea}</span>`);
+    const ab_=mk('button','ab',ab);ab_.title='Trocar atributo da perícia';ab_.onclick=()=>{s.a=A[(A.findIndex(a=>a[0]===s.a)+1)%7][0];render()};
+    r.querySelector('.sq').after(ab_);
+    const bt=r.querySelectorAll('button');
+    r.querySelector('.n').onclick=()=>{s.l=(s.l+1)%5;render()};
+    const dd=r.querySelector('.die');dd.onclick=()=>roll(dd,s.n,mod(ea),lv+pb,s.sp&&!lv);
+    const rx=r.querySelector('.x');if(rx)rx.onclick=e=>{e.stopPropagation();S.skills.splice(i,1);render()};
+    $(i<half?'sk1':'sk2').append(r)});
+  $('tals').innerHTML='';(APT[S.apt]||[]).forEach((t,i)=>{const k=S.apt+i,e=mk('div','tal',`<div class="tt">${t[2]?`<input type="checkbox" class="tg" ${S.toff[k]?'':'checked'} aria-label="Ativar bônus de ${t[0]}" title="Ativar ou desativar o bônus"> `:''}${t[0]}<small> · aptidão</small></div><div class="td">${t[1]}</div>${t[2]?`<div class="bonus">Bônus: ${describe(t[2])}</div>`:''}`);
+    const c=e.querySelector('.tg');if(c)c.onchange=()=>{S.toff[k]=!c.checked;render()};$('tals').append(e)});
+  const uh=mk('div','','');$('tals').append(uh);talents(uh,S.tals,render);
+  img('art',S.img);$('rm').hidden=!S.img;
+  img('part',pim(S.path));$('prm').hidden=!S.pimgs[S.path];
+  renderPot();
+  save()}
+
+const PIMG={saqueador:'img/saqueador.webp',arbitro:'img/arbitro.webp',erudito:'img/erudito.webp'};
+const ARW='img/seta.png';
+const pim=id=>S.pimgs[id]||PIMG[id]||'';
+const SEC=[['ch','Características'],['hab','Novas Habilidades'],['mel','Habilidades Melhoradas']];
+const PN={arbitro:'Caminho do Árbitro',saqueador:'Caminho do Saqueador',erudito:'Caminho do Erudito'};
+const readImg=(e,cb)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(f)};
+function describe(b){return b.split(';').map(x=>{x=x.trim();let m;
+  if(m=/^mestre:(.+)$/i.exec(x))return `${m[1].trim()} vira Mestre`;
+  if(m=/^teste:(.+?)([+-]\d+)$/i.exec(x))return `${m[2]} em testes de ${m[1].trim()}`;
+  if(m=/^(.+?)([+-]\d+)$/.exec(x))return `${m[2]} ${m[1].trim()}`;return x}).filter(Boolean).join(' · ')}
+function layerEl(n){const p=S.path,Ly=lay(p,n),sec=mk('section','layer'+(n<S.camada?' dim':''),`<h3>Camada ${n}${Ly.n&&!S.edit?' · '+esc(Ly.n):''}</h3>`);
+  const get=()=>{S.pd[p]=S.pd[p]||{};return S.pd[p][n]=S.pd[p][n]||JSON.parse(JSON.stringify(Ly))};
+  const inp=(v,ph,f,tg)=>{const e=document.createElement(tg||'input');e.value=v||'';e.placeholder=ph;e.setAttribute('aria-label',ph);e.oninput=()=>{f(e.value);save()};return e};
+  if(S.edit)sec.append(inp(Ly.n,'Nome da poção desta camada',v=>get().n=v),inp(Ly.bon,'Bônus: Físico+2; Investigar+2; teste:Carisma+2; mestre:Demolição',v=>get().bon=v));
+  SEC.forEach(([k,l])=>{const arr=Ly[k]||[];if(!arr.length&&!S.edit)return;sec.append(mk('h4','',l));
+    arr.forEach((it,i)=>{const w=mk('div','it','');
+      if(S.edit){const x=mk('button','x','×');x.onclick=()=>{get()[k].splice(i,1);render()};
+        const hl=mk('label','tgl',`<input type="checkbox" ${it.hoff?'':'checked'}> Texto oculto ativo`);hl.firstChild.onchange=ev=>{get()[k][i].hoff=!ev.target.checked;save()};
+        w.append(inp(it.t,'Título',v=>get()[k][i].t=v),x,inp(it.d,'Descrição',v=>get()[k][i].d=v,'textarea'),hl,inp(it.h,'Texto oculto (um parágrafo por linha)',v=>get()[k][i].h=v,'textarea'),bwidget(it.bon,v=>{get()[k][i].bon=v;save()}))}
+      else w.innerHTML=`${it.t?`<b>${esc(it.t)}</b>: `:''}${esc(it.d||'')}${it.bon?` <i class="bn">(${esc(describe(it.bon))})</i>`:''}${it.h&&!it.hoff?`<details><summary>Mais detalhes</summary>${it.h.split('\n').map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`;
+      sec.append(w)});
+    if(S.edit){const a=mk('button','btn','Adicionar');a.onclick=()=>{const g=get();(g[k]=g[k]||[]).push({t:'',d:'',h:'',bon:''});render()};sec.append(a)}});
+  if(!S.edit&&Ly.bon)sec.append(mk('div','bonus','Bônus: '+esc(describe(Ly.bon))));
+  return sec}
+function renderPot(){const pk=$('pick'),ly=$('layers');pk.innerHTML=ly.innerHTML='';pk.hidden=!!S.path;$('pg').hidden=!S.path;
+  if(!S.path){pk.append(mk('h2','','Escolha seu Caminho'));const g=mk('div','paths','');const ids=Object.keys(PN);
+    for(let i=0;i<22;i++){const id=ids[i];
+      const c=mk('div','pc'+(id?'':' off'),id?`<div class="pi">${pim(id)?`<img src="${pim(id)}" alt="">`:''}</div><b>${PN[id]}</b><button class="btn">Escolher</button><label class="lk">Imagem<input type="file" accept="image/*" hidden></label>`:`<div class="pi"></div><b>Em breve</b>`);
+      if(id){c.querySelector('button').onclick=()=>{S.path=id;render()};c.querySelector('input').onchange=e=>readImg(e,d=>{S.pimgs[id]=d;render()})}
+      g.append(c)}
+    pk.append(g);return}
+  const top=mk('div','ptop',`<h2>${PN[S.path]}</h2>`),sw=mk('button','btn','Trocar caminho');sw.onclick=()=>{S.path='';render()};top.append(sw);ly.append(top);
+  L.filter(n=>S.edit||n>=S.camada).forEach(n=>ly.append(layerEl(n)));
+  const t=mk('div','edtools',`<button class="link">${S.edit?'Travar edição':'Editar camadas'}</button>`);t.firstChild.onclick=()=>{S.edit=S.edit?0:1;render()};
+  if(S.edit){const ta=document.createElement('textarea');ta.rows=6;ta.placeholder='JSON dos caminhos';
+    const ex=mk('button','btn','Exportar JSON'),im=mk('button','btn','Importar JSON');
+    ex.onclick=()=>{ta.value=JSON.stringify(Object.fromEntries(Object.keys(PN).map(k=>[k,Object.fromEntries(L.map(n=>[n,lay(k,n)]))])))};
+    im.onclick=()=>{try{S.pd=JSON.parse(ta.value);render()}catch(e){ta.value='JSON inválido'}};t.append(ex,im,ta)}
+  ly.append(t)}
+function route(){const p=location.hash==='#pocao';$('v-pocao').hidden=!p;$('v-ficha').hidden=p;$('log').hidden=true;scrollTo(0,0)}
+$('camada').innerHTML=L.map(n=>`<option>${n}</option>`).join('');
+$('apt').innerHTML='<option value="">APTIDÃO</option>'+Object.keys(APT).map(a=>`<option>${a}</option>`).join('');
+$('nsa').innerHTML=A.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('');
+$('leg').innerHTML=LV.map((l,i)=>`<span><i style="--c:var(--l${i})"></i>${l}${i?' +'+i:''}</span>`).join('')+'<span>Clique no nome da perícia para mudar o nível. * Especial: sem treino, rola com desvantagem (−1d6).</span>';
+$('name').oninput=e=>{S.name=e.target.value;save()};$('apt').onchange=e=>{S.apt=e.target.value;render()};
+$('camada').onchange=e=>{S.camada=+e.target.value;render()};
+$('addtal').onclick=()=>{S.tals.push({t:'',d:''});render()};
+$('addsk').onclick=()=>{const n=$('nsk').value.trim();if(!n)return;S.skills.push({n,a:$('nsa').value,sp:$('nsp').checked?1:0,l:0,c:1});$('nsk').value='';render()};
+bindImg('art','img','rm');
+$('part').querySelector('input').onchange=e=>readImg(e,d=>{S.pimgs[S.path]=d;render()});$('prm').onclick=()=>{delete S.pimgs[S.path];render()};
+$('rollx').onclick=doRoll;$('expr').onkeydown=e=>{if(e.key==='Enter')doRoll()};
+addEventListener('hashchange',route);
+render();route();
+</script>
+</body>
+</html>
