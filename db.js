@@ -1,39 +1,22 @@
 'use strict';
-// Camada de banco de dados. Produção: PostgreSQL (DATABASE_URL). Desenvolvimento/testes: SQLite embutido do Node (>=22.5).
+// Camada de banco de dados. Produção: PostgreSQL/Neon (DATABASE_URL). Desenvolvimento/testes: SQLite embutido do Node (>=22.5).
+// O esquema NÃO é criado aqui: ver migrate.js e a pasta migrations/.
 // O SQL abaixo usa apenas o subconjunto comum aos dois (placeholders $1,$2..., ON CONFLICT, RETURNING).
 const path = require('path');
 
-const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS users(
-     id TEXT PRIMARY KEY, username TEXT NOT NULL, username_lc TEXT NOT NULL UNIQUE,
-     pass_hash TEXT NOT NULL, created_at BIGINT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS sessions(
-     token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-     expires_at BIGINT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS campaigns(
-     id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL REFERENCES users(id),
-     join_code TEXT NOT NULL UNIQUE, allow_layers INTEGER NOT NULL DEFAULT 0,
-     potions TEXT NOT NULL, rev BIGINT NOT NULL DEFAULT 1, created_at BIGINT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS members(
-     campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-     role TEXT NOT NULL CHECK(role IN ('master','player')), joined_at BIGINT NOT NULL,
-     PRIMARY KEY(campaign_id,user_id))`,
-  `CREATE TABLE IF NOT EXISTS sheets(
-     id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-     owner_id TEXT NOT NULL REFERENCES users(id), data TEXT NOT NULL,
-     rev BIGINT NOT NULL DEFAULT 1, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)`,
-  `CREATE INDEX IF NOT EXISTS sheets_campaign ON sheets(campaign_id)`,
-  `CREATE INDEX IF NOT EXISTS members_user ON members(user_id)`,
-];
 
 let impl;
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  console.error('ERRO: DATABASE_URL não definida em produção. O SQLite local é temporário no Render e não pode guardar dados permanentes.');
+  process.exit(1);
+}
 if (process.env.DATABASE_URL) {
   const { Pool, types } = require('pg');
   types.setTypeParser(20, v => parseInt(v, 10)); // BIGINT -> number
   const host = new URL(process.env.DATABASE_URL).hostname;
   const ssl = process.env.PGSSL ? process.env.PGSSL !== 'disable' : host.includes('.') && !/^(localhost|127\.)/.test(host);
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: ssl ? { rejectUnauthorized: false } : false, max: 10 });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: ssl ? { rejectUnauthorized: process.env.PGSSL_INSECURE !== 'true' } : false, max: 10, connectionTimeoutMillis: 15000, idleTimeoutMillis: 30000 });
+  pool.on('error', e => console.error('Erro no pool do banco:', e.message));
   impl = {
     kind: 'pg', fu: ' FOR UPDATE',
     query: async (sql, p = []) => (await pool.query(sql, p)).rows,
@@ -47,7 +30,7 @@ if (process.env.DATABASE_URL) {
       } catch (e) { try { await c.query('ROLLBACK'); } catch {} throw e; }
       finally { c.release(); }
     },
-    async init() { for (const s of SCHEMA) await pool.query(s); },
+    async ready() { for (let i = 1; ; i++) { try { await pool.query('SELECT 1'); return; } catch (e) { if (i >= 6) throw e; console.log(`Banco indisponível (tentativa ${i}/6): ${e.message}`); await new Promise(r => setTimeout(r, 3000)); } } },
   };
 } else {
   const { DatabaseSync } = require('node:sqlite');
@@ -70,7 +53,7 @@ if (process.env.DATABASE_URL) {
       try { const out = await fn(async (sql, p = []) => run(sql, p)); db.exec('COMMIT'); return out; }
       catch (e) { db.exec('ROLLBACK'); throw e; }
     }),
-    async init() { for (const s of SCHEMA) db.exec(s); },
+    async ready() {},
   };
 }
 module.exports = impl;
