@@ -1,0 +1,24 @@
+# Blueprint do Render: Web Service (Node). O banco é o Neon (PostgreSQL externo, permanente).
+services:
+  - type: web
+    name: ficha-virtual
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run safety     # o build FALHA (e o site antigo continua no ar) se houver escrita indevida no conteúdo
+    startCommand: npm start                          # aplica migrations protegidas e inicia o servidor
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL        # cole a connection string do Neon (com sslmode=require)
+        sync: false
+      - key: DEV_EMAIL           # opcional: promove uma conta JÁ existente a DEV (só se ainda não houver DEV)
+        sync: false
+      - key: APP_URL             # ex.: https://ficha-virtual.onrender.com (links de recuperação de senha)
+        sync: false
+      - key: RESEND_API_KEY      # opcional: habilita recuperação de senha por e-mail
+        sync: false
+      - key: MAIL_FROM           # ex.: Ficha Virtual <nao-responda@seudominio.com>
+        sync: false

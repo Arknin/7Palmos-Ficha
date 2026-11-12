@@ -1,0 +1,5 @@
+-- 003: aptidões globais (gerenciadas pela conta DEV) e itens de inventário por ficha
+-- Somente ADICIONA tabelas. A tabela antiga "inventory" (poções) é mantida intacta, sem uso
+CREATE TABLE IF NOT EXISTS aptitudes(id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '{}', position INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','hidden','deleted')), rev BIGINT NOT NULL DEFAULT 1, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL, created_by TEXT REFERENCES users(id), updated_by TEXT REFERENCES users(id));
+CREATE TABLE IF NOT EXISTS sheet_items(id TEXT PRIMARY KEY, sheet_id TEXT NOT NULL REFERENCES sheets(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', image TEXT NOT NULL DEFAULT '', quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity >= 0), position INTEGER NOT NULL DEFAULT 0, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS sheet_items_sheet ON sheet_items(sheet_id);
