@@ -36,4 +36,15 @@ function cleanLayerData(d) {
   }
   return y;
 }
-module.exports = { HttpError, bad, forbid, nf, conflict, now, uid, sha, ATT, ID, IMG, str, int, arr, obj, image, cleanSheet, cleanLayerData };
+const rid = () => crypto.randomBytes(5).toString('hex');
+// dados de uma aptidão: talentos (com id estável) e perícias concedidas (nível mínimo 1..4)
+function cleanAptData(d) {
+  obj(d, 'data'); const seen = new Set();
+  const talents = arr(d.talents || [], 12, 'talentos').map(x => {
+    obj(x, 'talento'); let id = /^[a-z0-9]{1,12}$/.test(String(x.id || '')) ? String(x.id) : rid(); while (seen.has(id)) id = rid(); seen.add(id);
+    return { id, t: str(String(x.t || ''), 100, 'talento'), d: str(String(x.d || ''), 2000, 'talento'), bon: str(String(x.bon || ''), 80, 'talento') };
+  });
+  const skills = {}; for (const [k, v] of Object.entries(obj(d.skills || {}, 'perícias'))) { if (Number.isInteger(v) && v >= 1 && v <= 4 && Object.keys(skills).length < 80) skills[str(k, 60, 'perícia')] = v; }
+  return { talents, skills };
+}
+module.exports = { rid, cleanAptData, HttpError, bad, forbid, nf, conflict, now, uid, sha, ATT, ID, IMG, str, int, arr, obj, image, cleanSheet, cleanLayerData };

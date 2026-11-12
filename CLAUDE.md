@@ -29,4 +29,5 @@ Nunca execute automaticamente operações destrutivas ou conflitantes. Em dúvid
 - `npm run safety` (roda no build do Render): falha se achar escrita indevida em conteúdo global ou migration destrutiva.
 - Executor de migrations (`migrate.js`): bloqueia migrations destrutivas/adulteradas e faz backup do conteúdo antes de migrar.
 - Checksum de integridade: se o conteúdo mudar fora da aplicação, as edições ficam bloqueadas até um DEV revisar e aceitar.
+- Ao mudar o conteúdo global (novas tabelas/colunas de conteúdo), **versione o checksum** (`SUM_V` em `content.js`) e semeie dados novos só via flag própria, nunca sobrescrevendo. Gere/atualize fixtures em `test/fixtures` e rode `test/upgrade.test.js`.
 - `npm test` deve passar antes de qualquer entrega.

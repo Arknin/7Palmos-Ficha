@@ -10,7 +10,7 @@
     "safety": "node scripts/safety-check.js",
     "backup": "node scripts/backup.js",
     "promote-dev": "node scripts/promote-dev.js",
-    "test": "npm run safety && node test/api.test.js && node test/protection.test.js && node test/legacy.test.js",
+    "test": "npm run safety && node test/api.test.js && node test/protection.test.js && node test/legacy.test.js && node test/upgrade.test.js",
     "test:ui": "node test/e2e-ui.js"
   },
   "engines": { "node": ">=22.5" },

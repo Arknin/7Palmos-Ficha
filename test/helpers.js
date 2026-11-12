@@ -7,7 +7,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBA
 const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ficha-')), 'test.sqlite');
 let ok = 0; const t = (name, cond) => { assert.ok(cond, 'FALHOU: ' + name); ok++; console.log('  ✓', name); };
 async function start(file, env = {}) {
-  const port = 4000 + Math.floor(Math.random() * 900);
+  const port = 4100 + Math.floor(Math.random() * 800);
   const proc = spawn(process.execPath, ['--no-warnings', path.join(ROOT, 'server.js')], { cwd: ROOT, env: { ...process.env, PORT: port, SQLITE_PATH: file, DATABASE_URL: '', NODE_ENV: 'test', MAIL_MODE: 'console', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = ''; proc.stdout.on('data', d => out += d); proc.stderr.on('data', d => out += d);
   const B = `http://localhost:${port}`;

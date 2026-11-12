@@ -38,9 +38,18 @@ const clickText = (p, sel, text) => p.evaluate((sel, text) => { const e = [...do
   await waitText(P, 'Rhiona'); await P.evaluate(() => document.querySelector('#v-app .pc a.btn').click()); await P.waitForFunction(() => CUR === 'sheet');
   const sheetId = await P.evaluate(() => SH.id);
   t('jogador abre a ficha que o mestre criou para ele', await P.$eval('#name', e => e.value) === 'Rhiona');
-  await P.waitForFunction(() => document.querySelectorAll('#inv select option').length >= 2, { timeout: 8000 });
-  await P.evaluate(() => document.querySelector('#inv .add .btn').click()); await waitText(P, 'Árbitro'); await P.waitForFunction(() => /1/.test(document.querySelector('#inv .mrow .ch')?.textContent || ''));
-  t('jogador guarda uma poção do catálogo global no inventário', true);
+  t('menu lateral aparece dentro da ficha (Campanha, Ficha, Inventário)', await P.$eval('#rail', e => !e.hidden && ['Campanha', 'Ficha', 'Inventário'].every(x => e.innerText.includes(x))));
+  const rail = await P.evaluate(() => { const r = document.getElementById('rail').getBoundingClientRect(); return { cy: r.top + r.height / 2, h: innerHeight, right: innerWidth - r.right, w: r.width, h2: r.height, br: getComputedStyle(document.getElementById('rail')).borderRadius }; });
+  t('menu é um retângulo vertical, centralizado na altura, encostado à direita e bem arredondado', Math.abs(rail.cy - rail.h / 2) < 4 && rail.right < 30 && rail.h2 > rail.w && parseInt(rail.br) >= 24);
+  await P.evaluate(() => [...document.querySelectorAll('#rail a')].find(a => a.title === 'Inventário').click()); await P.waitForFunction(() => CUR === 'inv');
+  t('inventário: foto e descrição NÃO aparecem no formulário até serem escolhidas', !(await P.$('#invc .itemform input[type=file]')) && !(await P.$('#invc .itemform textarea')));
+  await P.type('#invc .itemform input', 'Corda de seda'); await clickText(P, '#invc button', 'Criar item'); await waitText(P, 'Corda de seda');
+  t('item criado só com nome não exibe foto nem descrição', !(await P.$('#invc .icard img')) && !(await P.$('#invc .icard .ldesc')));
+  await P.type('#invc .itemform input', 'Amuleto'); await clickText(P, '#invc .itemform button', '+ Descrição'); await P.type('#invc .itemform textarea', 'Brilha no escuro');
+  await clickText(P, '#invc .itemform button', '+ Foto'); await (await P.$('#invc .itemform input[type=file]')).uploadFile(png); await P.waitForSelector('#invc .itemform img.limg[src^="data:"]'); await clickText(P, '#invc button', 'Criar item');
+  await waitText(P, 'Brilha no escuro'); t('item com descrição e foto exibe ambos', (await P.$$('#invc .icard img')).length === 1 && (await P.$$('#invc .icard .ldesc')).length === 1);
+  await P.evaluate(() => [...document.querySelectorAll('#rail a')].find(a => a.title === 'Ficha').click()); await P.waitForFunction(() => CUR === 'sheet'); t('menu lateral leva de volta à ficha', true);
+  await P.evaluate(() => [...document.querySelectorAll('#rail a')].find(a => a.title === 'Campanha').click()); await P.waitForFunction(() => CUR === 'camp'); t('fora da ficha (campanha) o menu lateral some', await P.$eval('#rail', e => e.hidden));
 
   console.log('Painel DEV (interface)');
   await D.goto(B + '/#dev'); await D.waitForFunction(() => CUR === 'dev' && !!document.querySelector('#dv .pc')); await waitText(D, 'Caminho do Árbitro');
@@ -54,6 +63,23 @@ const clickText = (p, sel, text) => p.evaluate((sel, text) => { const e = [...do
   await clickText(P, '#layers button', 'Trocar caminho'); await waitText(P, 'Caminho do Saqueador');
   await D.evaluate(() => [...document.querySelectorAll('#dv .pc')].find(c => c.innerText.includes('Caminho do Saqueador')).querySelectorAll('button')[1].click()); await gone(P, 'Caminho do Saqueador'); t('DEV oculta um caminho → some para o jogador em tempo real', true);
   await D.evaluate(() => [...document.querySelectorAll('#dv .pc')].find(c => c.innerText.includes('Caminho do Saqueador')).querySelectorAll('button')[1].click()); await waitText(P, 'Caminho do Saqueador'); t('DEV reexibe → volta para o jogador', true);
+
+  console.log('Aptidões e perícias definidas pelo DEV');
+  await D.goto(B + '/#dev'); await D.waitForFunction(() => CUR === 'dev' && !!document.querySelector('#dv .pc')); await clickText(D, '#dv button', 'Nova aptidão'); await D.waitForSelector('#dv .skp');
+  await D.type('#dv input', 'Médico'); await clickText(D, '#dv button', 'Adicionar talento'); await D.type('#dv .sec .it input', 'Primeiros Socorros');
+  const medicina = () => D.evaluate(() => { const r = [...document.querySelectorAll('#dv .skp .sk')].find(x => x.innerText.startsWith('Medicina')); r.querySelector('button.die').click(); r.querySelector('button.die').click(); return r.innerText; });
+  t('painel de perícias: 2 cliques no d20 = "Apto +2" (igual à ficha)', /Apto \+2/.test(await medicina()));
+  await clickText(D, '#dv button', 'Salvar aptidão'); await waitText(D, '1 talento(s) · 1 perícia(s)'); t('DEV cria aptidão com talento e perícia pela interface', true);
+  const sheetId2 = await P.evaluate(() => SH && SH.id) || sheetId; await P.goto(B + '/#s/' + sheetId2); await P.waitForFunction(() => CUR === 'sheet'); await P.waitForFunction(() => [...document.querySelectorAll('#apt option')].some(o => o.textContent === 'Médico'));
+  await P.select('#apt', 'Médico'); await P.waitForFunction(() => document.querySelector('#tals').innerText.includes('Primeiros Socorros'));
+  const ap = await P.evaluate(() => { const d = [...document.querySelectorAll('#sk1 .sk, #sk2 .sk')].find(x => x.innerText.startsWith('Medicina')).querySelector('.die'); return { ms: BN.ms.medicina, c: d.style.getPropertyValue('--c') }; });
+  t('jogador escolhe a aptidão: talentos aparecem e a perícia concedida sobe para Apto (mínimo)', ap.ms === 2 && ap.c.includes('--l2'));
+  const dir = await P.evaluate(() => { CP.pd.arbitro['8'].bon = 'aprendiz:Atletismo; apto:Furtividade; mestre:Corpo a Corpo Simples; graomestre:Medicina'; S.path = 'arbitro'; S.camada = 8; return JSON.stringify(bonus().ms); });
+  t('diretivas aprendiz:/apto:/mestre:/graomestre: funcionam nas poções', JSON.parse(dir).atletismo === 1 && JSON.parse(dir).furtividade === 2 && JSON.parse(dir)['corpo a corpo simples'] === 3 && JSON.parse(dir).medicina === 4);
+  await D.goto(B + '/#dev'); await D.waitForFunction(() => CUR === 'dev' && !!document.querySelector('#dv .pc')); await D.evaluate(() => document.querySelector('#dv .pc .btn').click()); await D.waitForSelector('#dv .mrow button');
+  await clickText(D, '#dv button', 'Editar'); await D.waitForSelector('#dv .skp'); await D.evaluate(() => [...document.querySelectorAll('#dv .skp .sk')].find(x => x.innerText.startsWith('Atletismo')).querySelector('button.die').click()); await clickText(D, '#dv button', 'Salvar poção'); await sleep(600);
+  const saved = await D.evaluate(async () => (await (await fetch('/api/dev/content')).json()).paths.find(p => p.slug === 'arbitro').potions.find(x => x.layer === 9).data.bon);
+  t('na edição da poção, o seletor grava a diretiva (aprendiz:Atletismo)', /aprendiz:Atletismo/.test(saved));
 
   console.log('Layout das setas (Tenacidade/Sanidade)');
   for (const [w, h, nome] of [[1280, 900, 'computador'], [375, 800, 'celular']]) {

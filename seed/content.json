@@ -115,5 +115,85 @@
    "image": "erudito.webp",
    "potions": []
   }
+ ],
+ "aptitudes": [
+  {
+   "slug": "Policial",
+   "name": "Policial",
+   "description": "",
+   "talents": [
+    {
+     "id": "0",
+     "t": "Sono Leve",
+     "d": "Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.",
+     "bon": ""
+    },
+    {
+     "id": "1",
+     "t": "Olho de Águia",
+     "d": "Você não sofre desvantagem enquanto atira com uma arma de fogo a média distância, tratando isso como curta distância.",
+     "bon": ""
+    },
+    {
+     "id": "2",
+     "t": "Postura Amedrontadora",
+     "d": "Quando você faz um teste para intimidar um alvo você ganha +2 no teste de Intimidação.",
+     "bon": "Intimidar+2"
+    }
+   ],
+   "skills": {}
+  },
+  {
+   "slug": "Ladrão",
+   "name": "Ladrão",
+   "description": "",
+   "talents": [
+    {
+     "id": "0",
+     "t": "Discreto",
+     "d": "Você sempre passa em testes de Prestidigitação para esconder objetos não maiores do que uma faca de uma pessoa comum.",
+     "bon": ""
+    },
+    {
+     "id": "1",
+     "t": "Arrombador",
+     "d": "Enquanto tentando abrir uma fechadura você ganha +2 no teste de Prestidigitação.",
+     "bon": "Prestidigitação+2"
+    },
+    {
+     "id": "2",
+     "t": "Sabedoria das Ruas",
+     "d": "Enquanto lidando com produtos do mercado negro ou procurando informações ilegais, você ganha +2 no teste de barganha.",
+     "bon": "Barganha+2"
+    }
+   ],
+   "skills": {}
+  },
+  {
+   "slug": "Erudito",
+   "name": "Erudito",
+   "description": "",
+   "talents": [
+    {
+     "id": "0",
+     "t": "Sono Leve",
+     "d": "Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.",
+     "bon": ""
+    },
+    {
+     "id": "1",
+     "t": "Multilinguística",
+     "d": "Você sabe um pouco sobre todas as línguas, permitindo você fazer teste para decifrar todas elas ou alguém falando elas. Em contraponto, você pode escolher 1 língua para dominar, se tornando fluente nela, mas você perde o efeito anterior.",
+     "bon": ""
+    },
+    {
+     "id": "2",
+     "t": "Operador",
+     "d": "Quando você rola um teste para controlar um máquina ou calcular a distância exata para ela acertar alguém você ganha +2 no teste de Guerrilha",
+     "bon": "Guerrilha+2"
+    }
+   ],
+   "skills": {}
+  }
  ]
 }

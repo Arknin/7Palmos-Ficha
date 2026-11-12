@@ -2,9 +2,9 @@
 // Verificação estática EXECUTADA NO BUILD (npm run safety). Falha se uma alteração técnica puder
 // sobrescrever/apagar conteúdo global ou dados de jogadores. Também serve como trava para assistentes de IA.
 const fs = require('fs'), path = require('path');
-const { lint, explain, readFiles } = require('../migrate');
+const { lint, explain } = require('../lint');
 const ROOT = process.env.SAFETY_ROOT || path.join(__dirname, '..');
-const WRITE = /\b(INSERT\s+(OR\s+\w+\s+)?INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(\s+TABLE)?|DROP\s+TABLE(\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+["`]?(paths|potions|content_versions|content_blobs|content_backups|game_settings)\b/i;
+const WRITE = /\b(INSERT\s+(OR\s+\w+\s+)?INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(\s+TABLE)?|DROP\s+TABLE(\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+["`]?(paths|potions|aptitudes|content_versions|content_blobs|content_backups|game_settings)\b/i;
 const ALLOWED = new Set(['content.js']); // único módulo que pode escrever no conteúdo global
 const SKIP = new Set(['node_modules', '.git', 'test', 'migrations', 'backups']);
 let problems = [];

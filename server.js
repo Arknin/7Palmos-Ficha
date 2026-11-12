@@ -1,7 +1,7 @@
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), { promisify } = require('util');
 const db = require('./db'), content = require('./content'), mail = require('./mail');
-const { HttpError, bad, forbid, nf, conflict, now, uid, sha, str, obj, image, cleanSheet } = require('./lib');
+const { HttpError, bad, forbid, nf, conflict, now, uid, sha, str, int, obj, image, cleanSheet } = require('./lib');
 const scrypt = promisify(crypto.scrypt);
 const PUB = path.join(__dirname, 'public');
 const PROD = process.env.NODE_ENV === 'production';
@@ -70,9 +70,22 @@ const getSheet = async (sid, q = Q, lock = '') => { const s = (await q('SELECT *
 const CODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from(crypto.randomBytes(8), b => CODE[b % CODE.length]).join('');
 const summary = d => ({ name: d.name || '', img: d.img || '', attrs: d.attrs || {} }); // única parte visível a outros jogadores
-async function inventoryOf(sid) {
-  return Q('SELECT i.potion_id,i.quantity,p.name,p.status,p.layer,a.slug FROM inventory i JOIN potions p ON p.id=i.potion_id JOIN paths a ON a.id=p.path_id WHERE i.sheet_id=$1 ORDER BY a.position,p.layer DESC', [sid]);
+const aptOk = async (q, apt) => !apt || (await q(`SELECT 1 AS x FROM aptitudes WHERE slug=$1 AND status='active'`, [apt])).length > 0;
+const itemsOf = (q, sid) => q(`SELECT id,name,description,quantity,CASE WHEN image='' THEN 0 ELSE 1 END AS has_image,updated_at FROM sheet_items WHERE sheet_id=$1 ORDER BY position,created_at`, [sid]).then(r => r.map(x => ({ ...x, has_image: !!x.has_image })));
+async function itemAccess(q, itemId, user, lock = '') {
+  const it = (await q('SELECT * FROM sheet_items WHERE id=$1', [itemId]))[0]; if (!it) throw nf();
+  const s = await getSheet(it.sheet_id, q, lock), role = await needMember(s.campaign_id, user.id, q);
+  if (role !== 'master' && s.owner_id !== user.id) throw nf(); return { it, s };
 }
+const itemFields = (b, partial) => {
+  const o = {};
+  if (!partial || b.name !== undefined) { o.name = str(String(b.name || '').trim(), 80, 'nome'); if (!o.name) throw bad('Informe o nome do item'); }
+  if (b.description !== undefined) o.description = str(String(b.description || ''), 2000, 'descrição');
+  if (b.image !== undefined) o.image = b.image === '' ? '' : image(b.image, 4e5, 'foto do item');
+  if (b.quantity !== undefined) o.quantity = int(b.quantity, 0, 9999, 'quantidade');
+  return o;
+};
+async function touchSheet(q, s) { const rev = s.rev + 1; await q('UPDATE sheets SET rev=$1, updated_at=$2 WHERE id=$3', [rev, now(), s.id]); return rev; }
 async function campaignView(cid, user) {
   const c = (await Q('SELECT * FROM campaigns WHERE id=$1', [cid]))[0]; if (!c) throw nf();
   const role = await needMember(cid, user.id);
@@ -82,8 +95,8 @@ async function campaignView(cid, user) {
   const sheets = parsed.map(({ r, d }) => ({ id: r.id, owner_id: r.owner_id, owner_name: r.owner_name, rev: r.rev, updated_at: r.updated_at, ...summary(d) }));
   let minLayer = 0;
   if (role !== 'master') { const mine = parsed.filter(x => x.r.owner_id === user.id).map(x => Number.isInteger(x.d.camada) ? x.d.camada : 9); minLayer = mine.length ? Math.min(...mine) : 10; }
-  const potions = await content.clientContent({ minLayer }); // conteúdo GLOBAL, igual para todas as campanhas
-  return { campaign: { id: c.id, name: c.name, owner_id: c.owner_id, allow_layers: !!c.allow_layers, rev: c.rev, join_code: role === 'master' ? c.join_code : undefined }, role, me: user.id, members: members.map(m => ({ ...m, has_avatar: !!m.has_avatar })), sheets, potions };
+  const potions = await content.clientContent({ minLayer }), aptitudes = await content.clientAptitudes(); // conteúdo GLOBAL, igual para todas as campanhas
+  return { campaign: { id: c.id, name: c.name, owner_id: c.owner_id, allow_layers: !!c.allow_layers, rev: c.rev, join_code: role === 'master' ? c.join_code : undefined }, role, me: user.id, members: members.map(m => ({ ...m, has_avatar: !!m.has_avatar })), sheets, potions, aptitudes };
 }
 
 // ---------- API ----------
@@ -174,7 +187,7 @@ async function api(req, res, url) {
     if (user.role !== 'dev') throw forbid('Acesso restrito à conta DEV');
     const a = user.id, sub = P[1], id = P[2];
     if (m === 'GET' && sub === 'panel.js') return [200, fs.readFileSync(path.join(__dirname, 'private', 'dev-panel.js')), { raw: 1, headers: { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' } }];
-    if (m === 'GET' && sub === 'content') return [200, { paths: await content.devContent() }];
+    if (m === 'GET' && sub === 'content') return [200, { paths: await content.devContent(), aptitudes: await content.devAptitudes() }];
     const done = async r => { broadcastAll({ t: 'content' }); return [200, r]; };
     if (m === 'POST' && sub === 'paths' && !id) return [201, await content.createPath(a, body).then(async r => { broadcastAll({ t: 'content' }); return r; })];
     if (m === 'PATCH' && sub === 'paths') return done(await content.updatePath(a, id, body));
@@ -182,6 +195,9 @@ async function api(req, res, url) {
     if (m === 'POST' && sub === 'potions' && !id) return [201, await content.createPotion(a, body).then(async r => { broadcastAll({ t: 'content' }); return r; })];
     if (m === 'PATCH' && sub === 'potions') return done(await content.updatePotion(a, id, body));
     if (m === 'POST' && sub === 'potions' && P[3] === 'status') return done(await content.setStatus(a, 'potion', id, body.base_rev, body.status));
+    if (m === 'POST' && sub === 'aptitudes' && !id) return [201, await content.createAptitude(a, body).then(async r => { broadcastAll({ t: 'content' }); return r; })];
+    if (m === 'PATCH' && sub === 'aptitudes') return done(await content.updateAptitude(a, id, body));
+    if (m === 'POST' && sub === 'aptitudes' && P[3] === 'status') return done(await content.setStatus(a, 'aptitude', id, body.base_rev, body.status));
     if (m === 'GET' && sub === 'history' && !id) return [200, { versions: await content.history(String(url.searchParams.get('type')), String(url.searchParams.get('id'))) }];
     if (m === 'GET' && sub === 'history') return [200, await content.getVersion(id)];
     if (m === 'POST' && sub === 'restore') return done(await content.restoreVersion(a, String(body.version_id || ''), body.base_rev));
@@ -247,8 +263,28 @@ async function api(req, res, url) {
       if (body.owner_id && body.owner_id !== user.id) { if (role !== 'master') throw forbid('Você só pode criar fichas para si mesmo'); if (!(await roleOf(cid, body.owner_id))) throw bad('O dono precisa participar da campanha'); owner = body.owner_id; }
       if ((await Q('SELECT COUNT(*) AS n FROM sheets WHERE campaign_id=$1', [cid]))[0].n >= 200) throw bad('Limite de fichas atingido');
       const data = body.data === undefined ? {} : cleanSheet(body.data), id = uid(), t = now();
+      if (data.apt && !(await aptOk(Q, data.apt))) data.apt = '';
       await Q('INSERT INTO sheets(id,campaign_id,owner_id,data,rev,created_at,updated_at) VALUES($1,$2,$3,$4,1,$5,$5)', [id, cid, owner, JSON.stringify(data), t]);
       broadcast(cid, { t: 'sheets' }); return [201, { id }];
+    }
+  }
+
+  // ----- itens de inventário (privados: dono da ficha e mestre) -----
+  if (P[0] === 'items' && P[1]) {
+    const iid = P[1];
+    if (m === 'GET' && P[2] === 'image') {
+      const { it } = await itemAccess(Q, iid, user); if (!it.image) throw nf(); const x = /^data:(image\/\w+);base64,(.*)$/.exec(it.image);
+      return [200, Buffer.from(x[2], 'base64'), { raw: 1, headers: { 'Content-Type': x[1], 'Cache-Control': 'private, max-age=86400' } }];
+    }
+    if (m === 'PATCH' || m === 'DELETE') {
+      const f = m === 'PATCH' ? itemFields(body, true) : null;
+      const out = await db.tx(async q => {
+        const { it, s } = await itemAccess(q, iid, user, db.fu);
+        if (m === 'DELETE') await q('DELETE FROM sheet_items WHERE id=$1', [iid]);
+        else { const keys = Object.keys(f); if (!keys.length) throw bad('Nada para alterar'); await q(`UPDATE sheet_items SET ${keys.map((k, i) => `${k}=$${i + 1}`).join(',')}, updated_at=$${keys.length + 1} WHERE id=$${keys.length + 2}`, [...keys.map(k => f[k]), now(), it.id]); }
+        return { rev: await touchSheet(q, s), cid: s.campaign_id, sid: s.id, items: await itemsOf(q, s.id) };
+      });
+      broadcast(out.cid, { t: 'sheet', id: out.sid, rev: out.rev }); return [200, { rev: out.rev, items: out.items }];
     }
   }
 
@@ -258,35 +294,29 @@ async function api(req, res, url) {
     if (m === 'GET' && P.length === 2) {
       const s = await getSheet(sid), role = await needMember(s.campaign_id, user.id), d = JSON.parse(s.data);
       const base = { id: s.id, campaign_id: s.campaign_id, owner_id: s.owner_id, rev: s.rev };
-      if (role === 'master' || s.owner_id === user.id) return [200, { ...base, data: d, inventory: await inventoryOf(sid) }];
+      if (role === 'master' || s.owner_id === user.id) return [200, { ...base, data: d, items: await itemsOf(Q, sid) }];
       return [200, { ...base, summaryOnly: true, summary: summary(d) }];
     }
     if (m === 'PATCH' && P.length === 2) {
       const patch = cleanSheet(obj(body.patch, 'patch')), out = await db.tx(async q => {
         const s = await getSheet(sid, q, db.fu), role = await needMember(s.campaign_id, user.id, q);
         if (role !== 'master' && s.owner_id !== user.id) throw forbid('Esta ficha pertence a outro jogador');
+        if (patch.apt !== undefined && patch.apt !== (JSON.parse(s.data).apt || '') && !(await aptOk(q, patch.apt))) throw bad('Esta aptidão não está disponível');
         if (role !== 'master' && patch.camada !== undefined) { const c = (await q('SELECT allow_layers FROM campaigns WHERE id=$1', [s.campaign_id]))[0]; if (!c.allow_layers) throw forbid('O mestre não permitiu alterar as camadas'); }
         const data = { ...JSON.parse(s.data), ...patch }, rev = s.rev + 1;
         await q('UPDATE sheets SET data=$1, rev=$2, updated_at=$3 WHERE id=$4', [JSON.stringify(data), rev, now(), sid]); return { rev, cid: s.campaign_id };
       });
       broadcast(out.cid, { t: 'sheet', id: sid, rev: out.rev }); return [200, { rev: out.rev }];
     }
-    if (m === 'PUT' && P[2] === 'inventory') {
-      const potionId = String(body.potion_id || ''), qty = Number.isInteger(body.quantity) ? body.quantity : -1; if (qty < 0 || qty > 999) throw bad('Quantidade inválida');
-      const out = await db.tx(async q => {
-        const s = await getSheet(sid, q, db.fu), role = await needMember(s.campaign_id, user.id, q);
-        if (role !== 'master' && s.owner_id !== user.id) throw forbid();
-        const p = (await q('SELECT p.id,p.status,p.layer,a.status AS pstatus FROM potions p JOIN paths a ON a.id=p.path_id WHERE p.id=$1', [potionId]))[0]; if (!p) throw nf('Poção não encontrada');
-        const cur = (await q('SELECT quantity FROM inventory WHERE sheet_id=$1 AND potion_id=$2', [sid, potionId]))[0], had = cur ? cur.quantity : 0;
-        if (qty > had) { // adicionar só poções ativas e (para jogadores) já alcançadas
-          if (p.status !== 'active' || p.pstatus !== 'active') throw forbid('Esta poção não está disponível');
-          if (role !== 'master' && p.layer < (JSON.parse(s.data).camada ?? 9)) throw forbid('Você ainda não alcançou esta camada');
-        }
-        if (qty === 0) await q('DELETE FROM inventory WHERE sheet_id=$1 AND potion_id=$2', [sid, potionId]);
-        else await q('INSERT INTO inventory(sheet_id,potion_id,quantity,updated_at) VALUES($1,$2,$3,$4) ON CONFLICT(sheet_id,potion_id) DO UPDATE SET quantity=excluded.quantity, updated_at=excluded.updated_at', [sid, potionId, qty, now()]);
-        const rev = s.rev + 1; await q('UPDATE sheets SET rev=$1, updated_at=$2 WHERE id=$3', [rev, now(), sid]); return { rev, cid: s.campaign_id, inventory: await inventoryOf2(q, sid) };
+    if (m === 'POST' && P[2] === 'items') {
+      const f = itemFields(body, false), id = uid(), out = await db.tx(async q => {
+        const s = await getSheet(sid, q, db.fu), role = await needMember(s.campaign_id, user.id, q); if (role !== 'master' && s.owner_id !== user.id) throw forbid();
+        if ((await q('SELECT COUNT(*) AS n FROM sheet_items WHERE sheet_id=$1', [sid]))[0].n >= 200) throw bad('Limite de itens atingido');
+        const pos = (await q('SELECT COALESCE(MAX(position),0)+1 AS n FROM sheet_items WHERE sheet_id=$1', [sid]))[0].n, t = now();
+        await q('INSERT INTO sheet_items(id,sheet_id,name,description,image,quantity,position,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8)', [id, sid, f.name, f.description || '', f.image || '', f.quantity ?? 1, pos, t]);
+        return { rev: await touchSheet(q, s), cid: s.campaign_id, items: await itemsOf(q, sid) };
       });
-      broadcast(out.cid, { t: 'sheet', id: sid, rev: out.rev }); return [200, { rev: out.rev, inventory: out.inventory }];
+      broadcast(out.cid, { t: 'sheet', id: sid, rev: out.rev }); return [201, { id, rev: out.rev, items: out.items }];
     }
     if (m === 'DELETE' && P.length === 2) {
       const s = await getSheet(sid), role = await needMember(s.campaign_id, user.id);
@@ -301,7 +331,6 @@ async function api(req, res, url) {
   }
   throw nf('Rota não encontrada');
 }
-const inventoryOf2 = (q, sid) => q('SELECT i.potion_id,i.quantity,p.name,p.status,p.layer,a.slug FROM inventory i JOIN potions p ON p.id=i.potion_id JOIN paths a ON a.id=p.path_id WHERE i.sheet_id=$1 ORDER BY a.position,p.layer DESC', [sid]);
 
 function readBody(req, max = 6e6) {
   return new Promise((ok, no) => {
@@ -345,6 +374,7 @@ const server = http.createServer(async (req, res) => {
   await require('./migrate').run();                 // esquema (com proteção de conteúdo)
   console.log('Semeadura inicial do conteúdo:', await content.seedIfEmpty());
   const ic = await content.check(); if (!ic.ok) console.error('\n⚠️  ' + content.integrityState().reason + '\n');
+  console.log('Semeadura inicial das aptidões:', await content.seedAptitudes());
   await require('./admin').bootstrapDev();
   setInterval(() => Q('DELETE FROM sessions WHERE expires_at<$1', [now()]).then(() => Q('DELETE FROM rate_limits WHERE reset_at<$1', [now()])).catch(() => {}), 3600e3).unref();
   server.listen(process.env.PORT || 3000, () => console.log(`Servidor em http://localhost:${server.address().port} (${db.kind})`));

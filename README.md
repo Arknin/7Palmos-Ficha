@@ -1,4 +1,4 @@
-# Ficha Virtual — plataforma de TTRPG (v3)
+# Ficha Virtual — plataforma de TTRPG (v3.1)
 
 Servidor Node.js (sem framework) + PostgreSQL (Neon) + front-end estático em `public/`.
 Contas individuais, campanhas, fichas privadas, **conteúdo global do jogo controlado pela conta DEV**, tempo real e proteções contra sobrescrita.
@@ -16,7 +16,8 @@ Contas individuais, campanhas, fichas privadas, **conteúdo global do jogo contr
 
 ## Tabelas
 - **Individuais (jogadores):** `users` (e-mail, usuário, hash, `role`, foto), `sessions`, `password_resets`, `rate_limits`, `campaigns`, `members`, `sheets` (ficha em JSON, privada), `inventory` (poção × quantidade por ficha).
-- **Globais (conteúdo do jogo):** `paths`, `potions` (`status` = active | hidden | deleted), `content_blobs` (imagens, por hash), `game_settings`.
+- **Globais (conteúdo do jogo):** `paths`, `potions`, `aptitudes` (cada uma com `status` = active | hidden | deleted), `content_blobs` (imagens, por hash), `game_settings`.
+- **Itens do inventário (v3.1):** `sheet_items` (nome, foto e descrição opcionais, quantidade) — privados ao dono da ficha e ao mestre. A tabela antiga `inventory` (poções) foi mantida intacta e sem uso: nada é apagado.
 - **Proteção/histórico:** `content_versions` (toda alteração, autor, data, snapshot), `content_backups`, `admin_log`, `app_meta` (checksum de integridade), `schema_migrations`.
 - Jogadores referenciam o conteúdo global só por id (`inventory.potion_id`) ou slug (`sheet.path`). Nada global é copiado para fichas/campanhas.
 
@@ -48,6 +49,13 @@ A permissão vive em `users.role` (no banco), conferida no servidor em **toda** 
    | `PGSSL_INSECURE=true` | só se necessário | desativa a verificação do certificado (não recomendado) |
 4. As migrations rodam sozinhas no start. Os dados ficam no Neon: reinícios e deploys não os apagam.
 
+## Novidades da v3.1
+- **Aptidões globais:** o DEV cria/edita/oculta/exclui aptidões no painel (talentos com bônus + perícias concedidas). O seletor de perícias funciona como na ficha: clique no d20 para definir o nível mínimo (Aprendiz, Apto, Mestre, Grão-Mestre). As 3 aptidões originais são semeadas uma única vez (e só se a tabela estiver vazia), mantendo os ids de talento 0/1/2 para não perder os interruptores das fichas antigas.
+- **Diretivas de perícia nas poções:** além de `mestre:Perícia`, agora existem `aprendiz:`, `apto:` e `graomestre:` (o nível é garantido como mínimo; nunca reduz). Dá para digitar ou usar o mesmo seletor de d20 no editor da poção.
+- **Inventário de itens:** nova página dentro da ficha (itens com foto e descrição opcionais — só aparecem se forem escolhidas). O inventário de poções foi removido da ficha.
+- **Menu lateral da ficha:** Campanha · Ficha · Inventário (só aparece dentro da ficha).
+- **Checksum versionado:** a fórmula de integridade evoluiu (v2 inclui aptidões). Ao subir o código novo, o servidor primeiro confere o conteúdo com a fórmula antiga e só então migra — adulteração continua detectável e nada vira falso alarme. **Voltar para uma versão mais antiga do código** faz o servidor entrar em modo de proteção (use "Aceitar estado atual" no painel DEV).
+
 ## Conteúdo global
 Toda alteração do DEV (criar, editar, ocultar, reexibir, excluir, restaurar) é gravada **no Neon**, numa transação, com `base_rev` (edições simultâneas conflitantes recebem 409), nova versão no histórico (autor/data/snapshot) e atualização do checksum. Todos os jogadores, em **todas** as campanhas, passam a ver a versão nova (aviso em tempo real).
 - **Ocultar** → some para jogadores; continua no banco. **Reexibir** → volta.
@@ -65,5 +73,5 @@ Toda alteração do DEV (criar, editar, ocultar, reexibir, excluir, restaurar) �
 Dentro do banco: `content_backups` (últimos 20; automático antes de migrar e ao aceitar integridade; manual pelo painel DEV, com download em JSON). Backup completo local: `npm run backup`. No Neon, use também o *restore* por ponto no tempo/branches do próprio Neon.
 
 ## Testes
-`npm test` (API, permissões, conteúdo global, persistência com reinício, proteções, banco antigo) e `npm run test:ui` (Chrome; requer `puppeteer-core`, `PUPPETEER_PATH` e `CHROME_PATH`).
+`npm test` (API, permissões, conteúdo global, itens, aptidões, persistência com reinício, proteções, banco antigo e **atualização de um banco com edições do DEV** — fixture em `test/fixtures`) e `npm run test:ui` (Chrome; requer `puppeteer-core`, `PUPPETEER_PATH` e `CHROME_PATH`).
 Rodar localmente: `node server.js` (usa SQLite em `data.sqlite`, Node ≥ 22.5).

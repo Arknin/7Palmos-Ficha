@@ -3,27 +3,33 @@
 // Toda escrita: transação + comparação de revisão (sem sobrescrita silenciosa) + versão no histórico + checksum de integridade.
 // `npm run safety` falha se qualquer outro arquivo tentar escrever nessas tabelas.
 const fs = require('fs'), path = require('path'), db = require('./db');
-const { bad, nf, conflict, HttpError, now, uid, sha, str, int, image, cleanLayerData } = require('./lib');
+const { bad, nf, conflict, HttpError, now, uid, sha, str, int, image, cleanLayerData, cleanAptData } = require('./lib');
 const Q = (s, p) => db.query(s, p);
-const T = { path: 'paths', potion: 'potions' };
+const T = { path: 'paths', potion: 'potions', aptitude: 'aptitudes' };
+const SUM_V = 2; // v1: caminhos+poções+configurações · v2: + aptidões
 const SETTINGS = { game_title: 80, game_description: 2000 };
 const DEFAULTS = { game_title: 'Ficha Virtual', game_description: '' };
 const state = { protected: false, reason: '' };
 const PROTECTED_MSG = 'PROTEÇÃO ATIVA: o conteúdo global no banco foi alterado fora dos mecanismos administrativos da aplicação (SQL direto, script, migration ou deploy). Edições foram bloqueadas para não sobrescrever dados. Um DEV deve revisar o conteúdo e usar "Aceitar estado atual" (ou restaurar um backup).';
 
 // ---------- integridade ----------
-async function checksum(q) {
+async function checksum(q, v = SUM_V) {
   const P = await q('SELECT id,slug,name,description,image,position,status,rev FROM paths ORDER BY id');
   const O = await q('SELECT id,path_id,layer,name,description,image,data,status,rev FROM potions ORDER BY id');
-  const G = await q('SELECT key,value,rev FROM game_settings ORDER BY key');
-  return sha(JSON.stringify([P, O, G]));
+  const G = await q('SELECT key,value,rev FROM game_settings ORDER BY key'), parts = [P, O, G];
+  if (v >= 2) parts.push(await q('SELECT id,slug,name,description,data,position,status,rev FROM aptitudes ORDER BY id'));
+  return sha(JSON.stringify(parts));
 }
-const setSum = (q, v) => q('INSERT INTO app_meta(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value', ['content_checksum', v]);
-const getSum = async q => ((await q('SELECT value FROM app_meta WHERE key=$1', ['content_checksum']))[0] || {}).value;
+async function getSum(q) { const r = await q('SELECT key,value FROM app_meta WHERE key IN ($1,$2)', ['content_checksum', 'content_checksum_v']), m = Object.fromEntries(r.map(x => [x.key, x.value])); return { value: m.content_checksum, v: +(m.content_checksum_v || 1) }; }
+async function storeSum(q) {
+  const up = (k, v) => q('INSERT INTO app_meta(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [k, v]);
+  await up('content_checksum', await checksum(q, SUM_V)); await up('content_checksum_v', String(SUM_V));
+}
+// Se a fórmula do checksum evoluiu, primeiro confere o conteúdo com a fórmula ANTIGA (adulteração continua detectável) e só então migra o checksum.
 async function check() {
-  const cur = await checksum(Q), saved = await getSum(Q);
-  if (!saved) { await setSum(Q, cur); state.protected = false; return { ok: true, adopted: true }; }
-  state.protected = saved !== cur; state.reason = state.protected ? PROTECTED_MSG : '';
+  const s = await getSum(Q); if (!s.value) { await storeSum(Q); state.protected = false; return { ok: true, adopted: true }; }
+  const cur = await checksum(Q, s.v); state.protected = cur !== s.value; state.reason = state.protected ? PROTECTED_MSG : '';
+  if (!state.protected && s.v < SUM_V) await storeSum(Q);
   return { ok: !state.protected };
 }
 const integrityState = () => ({ ...state });
@@ -32,9 +38,9 @@ async function logAdmin(q, actor, action, detail) { await q('INSERT INTO admin_l
 async function mutate(actor, fn) {
   return db.tx(async q => {
     const saved = await getSum(q);
-    if (saved && saved !== await checksum(q)) { state.protected = true; state.reason = PROTECTED_MSG; throw new HttpError(423, PROTECTED_MSG); }
+    if (saved.value && saved.value !== await checksum(q, saved.v)) { state.protected = true; state.reason = PROTECTED_MSG; throw new HttpError(423, PROTECTED_MSG); }
     const res = await fn(q);
-    await setSum(q, await checksum(q));
+    await storeSum(q);
     return res;
   });
 }
@@ -95,6 +101,27 @@ const createPotion = (actor, b) => mutate(actor, async q => {
 });
 const updatePotion = (actor, id, b) => mutate(actor, async q => { const r = await edit(q, actor, 'potion', id, b.base_rev, await potionFields(q, b, true), 'update'); return { rev: r.rev }; });
 
+// ---------- aptidões (conteúdo global) ----------
+const aptFields = (b, partial) => {
+  const o = {};
+  if (!partial || b.name !== undefined) { o.name = str(String(b.name || '').trim(), 30, 'nome'); if (!o.name) throw bad('Informe o nome da aptidão'); }
+  if (!partial || b.description !== undefined) o.description = str(String(b.description || ''), 2000, 'descrição');
+  if (!partial || b.data !== undefined) o.data = JSON.stringify(cleanAptData(b.data || {}));
+  return o;
+};
+const nameBusy = async (q, name, exceptId) => (await q(`SELECT id FROM aptitudes WHERE LOWER(name)=$1 AND status<>'deleted' AND id<>$2`, [name.toLowerCase(), exceptId || '']))[0];
+const createAptitude = (actor, b) => mutate(actor, async q => {
+  const f = aptFields(b, false); if (await nameBusy(q, f.name)) throw conflict('Já existe uma aptidão com este nome');
+  let slug = f.name, n = 1; while ((await q('SELECT 1 AS x FROM aptitudes WHERE slug=$1', [slug])).length) slug = f.name.slice(0, 26) + ' ' + (++n);
+  const id = uid(), pos = (await q('SELECT COALESCE(MAX(position),0)+1 AS n FROM aptitudes'))[0].n, t = now();
+  await q('INSERT INTO aptitudes(id,slug,name,description,data,position,status,rev,created_at,updated_at,created_by,updated_by) VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8,$9,$9)', [id, slug, f.name, f.description, f.data, pos, 'active', t, actor]);
+  await ver(q, 'aptitude', id, 'create', (await q('SELECT * FROM aptitudes WHERE id=$1', [id]))[0], actor); return { id, slug };
+});
+const updateAptitude = (actor, id, b) => mutate(actor, async q => {
+  const f = aptFields(b, true); if (f.name && await nameBusy(q, f.name, id)) throw conflict('Já existe uma aptidão com este nome');
+  const r = await edit(q, actor, 'aptitude', id, b.base_rev, f, 'update'); return { rev: r.rev };
+});
+
 // ---------- ocultar / reexibir / excluir (exclusão lógica) ----------
 const FLOW = { active: { hidden: 'hide', deleted: 'delete' }, hidden: { active: 'show', deleted: 'delete' }, deleted: { hidden: 'restore' } };
 const setStatus = (actor, type, id, baseRev, status) => mutate(actor, async q => {
@@ -109,6 +136,7 @@ const history = async (type, id) => Q('SELECT v.id,v.version,v.action,v.note,v.c
 const getVersion = async vid => { const r = (await Q('SELECT * FROM content_versions WHERE id=$1', [vid]))[0]; if (!r) throw nf(); return { ...r, snapshot: JSON.parse(r.snapshot) }; };
 const restoreVersion = (actor, vid, baseRev) => mutate(actor, async q => {
   const v = (await q('SELECT * FROM content_versions WHERE id=$1', [vid]))[0]; if (!v) throw nf(); const s = JSON.parse(v.snapshot);
+  if (v.entity_type === 'aptitude') { if (s.status !== 'deleted' && await nameBusy(q, s.name, v.entity_id)) throw conflict('Já existe uma aptidão com este nome'); const r = await edit(q, actor, 'aptitude', v.entity_id, baseRev, { name: s.name, description: s.description, data: s.data, status: s.status }, 'restore', `restaurado da versão ${v.version}`); return { rev: r.rev }; }
   if (v.entity_type === 'setting') return setSettingTx(q, actor, s.key, s.value, baseRev, 'restore', `restaurado da versão ${v.version}`);
   const ch = v.entity_type === 'path' ? { name: s.name, description: s.description, image: s.image, position: s.position, status: s.status } : { name: s.name, description: s.description, image: s.image, data: s.data, status: s.status };
   if (v.entity_type === 'potion' && s.status !== 'deleted' && await layerBusy(q, s.path_id, s.layer, v.entity_id)) throw conflict('A camada desta poção está ocupada');
@@ -141,6 +169,12 @@ async function clientContent({ minLayer = 0 } = {}) {
   }
   return out;
 }
+async function clientAptitudes() {
+  const rows = await Q(`SELECT * FROM aptitudes WHERE status='active' ORDER BY position,created_at`), out = { order: [], map: {} };
+  for (const a of rows) { const d = JSON.parse(a.data || '{}'); out.order.push(a.slug); out.map[a.slug] = { name: a.name, description: a.description, talents: d.talents || [], skills: d.skills || {} }; }
+  return out;
+}
+async function devAptitudes() { return (await Q('SELECT * FROM aptitudes ORDER BY position,created_at')).map(a => ({ id: a.id, slug: a.slug, name: a.name, description: a.description, data: JSON.parse(a.data || '{}'), status: a.status, rev: a.rev, updated_at: a.updated_at })); }
 async function devContent() {
   const paths = await Q(`SELECT * FROM paths WHERE 1=1 ORDER BY position,created_at`), potions = await Q('SELECT * FROM potions ORDER BY layer DESC,created_at');
   return paths.map(p => ({ id: p.id, slug: p.slug, name: p.name, description: p.description, image: blobUrl(p.image), position: p.position, status: p.status, rev: p.rev, updated_at: p.updated_at,
@@ -150,7 +184,7 @@ async function getBlob(hash) { const r = (await Q('SELECT data FROM content_blob
 
 // ---------- backups ----------
 async function createBackup(actor, reason) {
-  const data = { version: 1, created_at: now(), paths: await Q('SELECT * FROM paths'), potions: await Q('SELECT * FROM potions'), settings: await Q('SELECT * FROM game_settings'), versions: await Q('SELECT * FROM content_versions ORDER BY created_at'), blobs: await Q('SELECT * FROM content_blobs') };
+  const data = { version: 1, created_at: now(), paths: await Q('SELECT * FROM paths'), potions: await Q('SELECT * FROM potions'), settings: await Q('SELECT * FROM game_settings'), aptitudes: await Q('SELECT * FROM aptitudes').catch(() => []), /* a tabela pode ainda não existir antes da migration 003 */ versions: await Q('SELECT * FROM content_versions ORDER BY created_at'), blobs: await Q('SELECT * FROM content_blobs') };
   const id = uid(); await Q('INSERT INTO content_backups(id,reason,actor_id,data,created_at) VALUES($1,$2,$3,$4,$5)', [id, reason, actor, JSON.stringify(data), now()]);
   await Q('DELETE FROM content_backups WHERE id NOT IN (SELECT id FROM content_backups ORDER BY created_at DESC LIMIT 20)'); return id;
 }
@@ -158,7 +192,7 @@ const listBackups = () => Q('SELECT b.id,b.reason,b.created_at,u.username AS act
 const getBackup = async id => { const r = (await Q('SELECT data FROM content_backups WHERE id=$1', [id]))[0]; if (!r) throw nf(); return r.data; };
 async function acceptState(actor) {
   await createBackup(actor, 'antes de aceitar o estado atual do conteúdo');
-  return db.tx(async q => { const cur = await checksum(q); await setSum(q, cur); await logAdmin(q, actor, 'integrity.accept', { checksum: cur }); state.protected = false; state.reason = ''; return { checksum: cur }; });
+  return db.tx(async q => { await storeSum(q); await logAdmin(q, actor, 'integrity.accept', { checksum: await checksum(q) }); state.protected = false; state.reason = ''; return {}; });
 }
 
 // ---------- seed inicial (NUNCA sobrescreve) ----------
@@ -178,7 +212,20 @@ async function seedIfEmpty() {
         await ver(q, 'potion', pid, 'create', (await q('SELECT * FROM potions WHERE id=$1', [pid]))[0], null, 'seed inicial');
       }
     }
-    await q('INSERT INTO app_meta(key,value) VALUES($1,$2)', ['content_seeded', String(now())]); await setSum(q, await checksum(q)); return 'semeado';
+    await q('INSERT INTO app_meta(key,value) VALUES($1,$2)', ['content_seeded', String(now())]); await storeSum(q); return 'semeado';
   });
 }
-module.exports = { check, integrityState, mutate, createPath, updatePath, createPotion, updatePotion, setStatus, history, getVersion, restoreVersion, getSettings, setSetting, clientContent, devContent, getBlob, createBackup, listBackups, getBackup, acceptState, seedIfEmpty, logAdmin };
+async function seedAptitudes() {
+  if (process.env.SEED_CONTENT === 'false') return 'desativado'; if (state.protected) return 'protecao-ativa';
+  return mutate(null, async q => {
+    if ((await q('SELECT value FROM app_meta WHERE key=$1', ['aptitudes_seeded']))[0]) return 'ja-semeado';
+    if ((await q('SELECT COUNT(*) AS n FROM aptitudes'))[0].n > 0) { await q('INSERT INTO app_meta(key,value) VALUES($1,$2)', ['aptitudes_seeded', 'existing']); return 'conteudo-existente'; }
+    const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed', 'content.json'), 'utf8')); let pos = 0;
+    for (const a of seed.aptitudes || []) {
+      const id = uid(), t = now(); await q('INSERT INTO aptitudes(id,slug,name,description,data,position,status,rev,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$8)', [id, a.slug, a.name, a.description || '', JSON.stringify(cleanAptData({ talents: a.talents, skills: a.skills })), ++pos, 'active', t]);
+      await ver(q, 'aptitude', id, 'create', (await q('SELECT * FROM aptitudes WHERE id=$1', [id]))[0], null, 'seed inicial');
+    }
+    await q('INSERT INTO app_meta(key,value) VALUES($1,$2)', ['aptitudes_seeded', String(now())]); return 'semeado';
+  });
+}
+module.exports = { createAptitude, updateAptitude, clientAptitudes, devAptitudes, seedAptitudes, check, integrityState, mutate, createPath, updatePath, createPotion, updatePotion, setStatus, history, getVersion, restoreVersion, getSettings, setSetting, clientContent, devContent, getBlob, createBackup, listBackups, getBackup, acceptState, seedIfEmpty, logAdmin };

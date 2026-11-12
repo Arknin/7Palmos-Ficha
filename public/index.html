@@ -96,6 +96,12 @@ a.pi{display:block}.fl{cursor:pointer;display:inline-block}.cfg{display:flex;fle
 .av{border-radius:50%;object-fit:cover;display:inline-grid;place-items:center;background:var(--panel);border:1px solid var(--line);vertical-align:middle;font-weight:700;color:var(--gold)}
 .bar .mini{font:600 14px var(--sans);letter-spacing:0;color:var(--txt);display:inline-flex;align-items:center;gap:6px}.bar .mini:hover{color:var(--gold)}
 .limg{max-width:160px;max-height:160px;border-radius:6px;display:block;margin:6px 0}.ldesc{color:#c9c5ba;margin:6px 0 10px}
+.rail{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:8;display:flex;flex-direction:column;gap:6px;padding:10px 6px;background:rgba(14,15,17,.84);border:1px solid var(--line);border-radius:32px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 6px 24px #000a}
+.rail a{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:9px 2px;border-radius:24px;color:var(--mut);text-decoration:none;font:600 10px var(--sans);letter-spacing:.04em}.rail a svg{width:22px;height:22px}.rail a:hover{color:var(--txt)}.rail a.on{background:#d8c9a31f;color:var(--gold)}
+body.rail-on{padding-right:92px}
+@media(max-width:640px){.rail{right:6px}.rail a{width:48px;font-size:9px}body.rail-on{padding-right:66px}}
+.itemform{display:flex;flex-direction:column;gap:8px;max-width:460px;margin-bottom:14px}.itemform input,.itemform textarea{background:var(--panel);border:1px solid var(--line);padding:6px 10px;border-radius:3px;width:100%}
+.itemform label.q{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}.icards{align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}.icard{border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}.iimg{width:100%;max-height:200px;object-fit:cover;border-radius:4px}.icard .mrow{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -136,8 +142,6 @@ a.pi{display:block}.fl{cursor:pointer;display:inline-block}.cfg{display:flex;fle
     <h2 style="margin-top:34px">Talentos</h2>
     <div id="tals"></div>
     <button class="btn" id="addtal">Adicionar talento</button>
-    <h2 style="margin-top:34px">Inventário de poções</h2>
-    <div id="inv"></div>
   </div>
   <aside class="side">
     <label class="art" id="art"><span>Adicionar imagem (PNG)</span><img alt="Imagem do personagem" hidden><input type="file" accept="image/*"></label>
@@ -163,6 +167,12 @@ a.pi{display:block}.fl{cursor:pointer;display:inline-block}.cfg{display:flex;fle
   <div id="layers"></div>
 </div>
 </main>
+<main class="frame" id="v-inv" hidden>
+<header><a class="nav" id="lnkIBack" href="#camps">‹ Ficha</a><h2 style="margin:0;font-size:30px;flex:1">Inventário</h2></header>
+<div class="rule"></div>
+<div id="invc"></div>
+</main>
+<nav class="rail" id="rail" aria-label="Navegação da ficha" hidden></nav>
 <div class="log" id="log" role="status" aria-live="polite" hidden></div>
 
 <script>
@@ -171,13 +181,15 @@ const LV=['Destreinado','Aprendiz','Apto','Mestre','Grão-Mestre'];
 const SK=[['Adestrar','carisma'],['Alquimia','inteligencia',1],['Apostar','inteligencia'],['Atletismo','fisico'],['Barganha','carisma'],['Corpo a Corpo Marcial','combate'],['Corpo a Corpo Simples','combate'],['Coordenação','agilidade'],['Dedução','inteligencia'],['Demolição','inteligencia',1],['Discernir','percepcao'],['Disfarçar','carisma'],['Disparo Marcial','agilidade',1],['Disparo Simples','agilidade',1],['Educação','inteligencia'],['Encanto','carisma'],['Escutar','percepcao'],['Escrutinar','percepcao'],['Falsificar','inteligencia',1],['Furtividade','agilidade'],['Guerrilha','inteligencia',1],['Interrogar','vontade'],['Intimidar','vontade'],['Investigar','percepcao'],['Lábia','carisma'],['Liderar','carisma',1],['Malícia','carisma'],['Manufaturar','inteligencia'],['Medicina','inteligencia',1],['Misticismo','percepcao',1],['Navegação','inteligencia',1],['Pilotagem','agilidade'],['Prestidigitação','agilidade',1],['Sobrevivência','percepcao'],['Tenacidade','fisico'],['Virtude','vontade'],['Vivência','inteligencia']];
 const DIE='<svg viewBox="0 0 40 40" fill="currentColor" stroke="#050506" stroke-width="1.6" stroke-linejoin="round"><path d="M20 2 36 11v18L20 38 4 29V11z"/><path d="M20 13 31 28H9z" fill="none"/><path d="M20 2v11M36 11 31 28 36 29M4 11l5 17-5 1M9 28l11 10 11-10" fill="none"/></svg>';
 const L=[9,8,7,6,5,4,3,2,1,0];
-const APT={Policial:[['Sono Leve','Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.'],['Olho de Águia','Você não sofre desvantagem enquanto atira com uma arma de fogo a média distância, tratando isso como curta distância.'],['Postura Amedrontadora','Quando você faz um teste para intimidar um alvo você ganha +2 no teste de Intimidação.','Intimidar+2']],Ladrão:[['Discreto','Você sempre passa em testes de Prestidigitação para esconder objetos não maiores do que uma faca de uma pessoa comum.'],['Arrombador','Enquanto tentando abrir uma fechadura você ganha +2 no teste de Prestidigitação.','Prestidigitação+2'],['Sabedoria das Ruas','Enquanto lidando com produtos do mercado negro ou procurando informações ilegais, você ganha +2 no teste de barganha.','Barganha+2']],Erudito:[['Sono Leve','Enquanto dorme, você não pode ser pego desprevenido ou ficar À Mercê.'],['Multilinguística','Você sabe um pouco sobre todas as línguas, permitindo você fazer teste para decifrar todas elas ou alguém falando elas. Em contraponto, você pode escolher 1 língua para dominar, se tornando fluente nela, mas você perde o efeito anterior.'],['Operador','Quando você rola um teste para controlar um máquina ou calcular a distância exata para ela acertar alguém você ganha +2 no teste de Guerrilha','Guerrilha+2']]};
+let APTS={order:[],map:{}};
+const LVKEY={1:'aprendiz',2:'apto',3:'mestre',4:'graomestre'};
+function fillApt(){const o=['<option value="">APTIDÃO</option>'].concat(APTS.order.map(k=>`<option value="${esc(k)}">${esc(APTS.map[k].name)}</option>`));if(S.apt&&!APTS.map[S.apt])o.push(`<option value="${esc(S.apt)}">${esc(S.apt)} (indisponível)</option>`);$('apt').innerHTML=o.join('');$('apt').value=S.apt}
 const KEYS=['name','apt','camada','free','attrs','skills','tals','img','path','toff','ten','sn'];
 const clone=x=>JSON.parse(JSON.stringify(x));
 const newSheet=()=>({name:'',apt:'',camada:9,free:false,attrs:Object.fromEntries(A.map(a=>[a[0],1])),skills:SK.map(s=>({n:s[0],a:s[1],sp:s[2]||0,l:0,c:0})),tals:[{t:'',d:''}],img:'',path:'',toff:{},ten:0,sn:0});
 function norm(d){const n=newSheet();KEYS.forEach(k=>{if(d&&d[k]!==undefined)n[k]=clone(d[k])});
   const old=n.skills;n.skills=SK.map(s=>{const o=old.find(x=>x.n===s[0]);return o?Object.assign(o,{sp:s[2]||0}):{n:s[0],a:s[1],sp:s[2]||0,l:0,c:0}}).concat(old.filter(x=>x.c));
-  if(n.apt&&!APT[n.apt])n.apt='';return n}
+  return n}
 let S=newSheet(),BASE={},SH=null,CAMP=null,ME=null,CP={pd:{},pimgs:{},paths:{},order:[]},UI={edit:false},CUR='',PX={mode:'sheet',path:''},STAT='';
 const isMaster=()=>!!CAMP&&CAMP.role==='master';
 const canLayers=()=>isMaster()||!!(CAMP&&CAMP.allow_layers);
@@ -192,10 +204,10 @@ const AI=k=>A.find(a=>a[0]===k);
 const nz=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const lay=(p,n)=>(CP.pd[p]||{})[n]||{n:'',ch:[],hab:[],mel:[],bon:''};
 const curName=()=>S.path?lay(S.path,S.camada).n||'':'';
-let BN={at:{},sk:{},ts:{},ms:[]},SP=0;
-function bonus(){const B={at:{},sk:{},ts:{},ms:[]};const src=[];if(S.path)L.filter(n=>n>=S.camada).forEach(n=>{const y=lay(S.path,n);src.push(y.bon||'');SEC.forEach(([k])=>(y[k]||[]).forEach(it=>src.push(it.bon||'')))});(APT[S.apt]||[]).forEach((t,i)=>{if(!S.toff[S.apt+i])src.push(t[2]||'')});S.tals.forEach(t=>{if(t.bon&&!t.off)src.push(t.bon)});
+let BN={at:{},sk:{},ts:{},ms:{}},SP=0;
+function bonus(){const B={at:{},sk:{},ts:{},ms:{}};const src=[];if(S.path)L.filter(n=>n>=S.camada).forEach(n=>{const y=lay(S.path,n);src.push(y.bon||'');SEC.forEach(([k])=>(y[k]||[]).forEach(it=>src.push(it.bon||'')))});const AP=APTS.map[S.apt];if(AP){AP.talents.forEach(t=>{if(!S.toff[S.apt+t.id])src.push(t.bon||'')});Object.entries(AP.skills||{}).forEach(([n,l])=>src.push(LVKEY[l]+':'+n))};S.tals.forEach(t=>{if(t.bon&&!t.off)src.push(t.bon)});
   src.join(';').split(';').forEach(x=>{x=nz(x);if(!x)return;
-    if(x.startsWith('mestre:'))return void B.ms.push(x.slice(7).trim());
+    const dm=/^(aprendiz|apto|mestre|grao-?\s*mestre):(.+)$/.exec(x);if(dm){const lv={aprendiz:1,apto:2,mestre:3}[dm[1]]||4,k=dm[2].trim();B.ms[k]=Math.max(B.ms[k]||0,lv);return}
     const ts=x.startsWith('teste:');if(ts)x=x.slice(6);
     const m=/^(.+?)([+-]\d+)$/.exec(x);if(!m)return;const k=m[1].trim(),v=+m[2],a=A.find(a=>a[0]===k);
     if(a){const o=ts?B.ts:B.at;o[a[0]]=(o[a[0]]||0)+v}else if(!ts)B.sk[k]=(B.sk[k]||0)+v});
@@ -245,7 +257,7 @@ function img(box,src){const b=$(box),im=b.querySelector('img');b.classList.toggl
 function bindImg(box,key,rm){$(box).querySelector('input').onchange=e=>readImg(e,d=>{S[key]=d;render()},560);$(rm).onclick=()=>{S[key]='';render()}}
 
 function render(){
-  $('name').value=S.name;$('apt').value=S.apt;$('pocao').value=curName();BN=bonus();SP=Math.min(3,Math.max(0,S.sn-1));document.querySelector('.ghost').style.opacity=S.path?1:'';$('camada').value=S.camada;$('camada').disabled=!canLayers();$('camada').title=canLayers()?'':'O mestre não permitiu alterar as camadas';
+  $('name').value=S.name;fillApt();$('pocao').value=curName();BN=bonus();SP=Math.min(3,Math.max(0,S.sn-1));document.querySelector('.ghost').style.opacity=S.path?1:'';$('camada').value=S.camada;$('camada').disabled=!canLayers();$('camada').title=canLayers()?'':'O mestre não permitiu alterar as camadas';
   $('attrs').innerHTML='';
   A.forEach(([k,n])=>{const v=S.attrs[k],e=v+(BN.at[k]||0),t=BN.ts[k]||0;
     const r=mk('div','at',`<span class="an">${n}</span><button class="sm" aria-label="Diminuir ${n}" ${v<=0?'disabled':''}>−</button><span class="ch">${e}</span><button class="sm" aria-label="Aumentar ${n}" ${v>=10||(!S.free&&(v===0||pool()<=0))?'disabled':''}>+</button><span class="mod">${fm(mod(e))}${BN.at[k]?` <i class="bn">+${BN.at[k]}</i>`:''}</span><button class="die" aria-label="Rolar ${n}">${DIE}<b></b></button>`);
@@ -256,7 +268,7 @@ function render(){
   $('tn').textContent=3+S.attrs.fisico+(BN.at.fisico||0);$('sn').textContent=3+S.attrs.vontade+(BN.at.vontade||0);stEl($('stt'),TS,'ten');stEl($('sts'),SS,'sn');
   $('sk1').innerHTML=$('sk2').innerHTML='';
   const half=Math.ceil(S.skills.length/2);
-  S.skills.forEach((s,i)=>{const [,an,ab]=AI(s.a),l0=BN.ms.includes(nz(s.n))?Math.max(s.l,3):s.l,lv=Math.max(0,l0-SP),pb=(BN.sk[nz(s.n)]||0)+(BN.ts[s.a]||0),ea=S.attrs[s.a]+(BN.at[s.a]||0);
+  S.skills.forEach((s,i)=>{const [,an,ab]=AI(s.a),l0=Math.max(s.l,BN.ms[nz(s.n)]||0),lv=Math.max(0,l0-SP),pb=(BN.sk[nz(s.n)]||0)+(BN.ts[s.a]||0),ea=S.attrs[s.a]+(BN.at[s.a]||0);
     const r=mk('div','sk',`<span class="n" title="${LV[s.l]} · clique para mudar o nível">${s.n}${s.sp?'<span class="star">*</span>':''}${pb?`<i class="bn"> +${pb}</i>`:''}${lv<l0?`<i class="bn" title="Nível reduzido pela Sanidade"> ▼${l0-lv}</i>`:''}${s.c?'<button class="x" aria-label="Remover perícia">×</button>':''}</span><button class="die" style="--c:var(--l${lv})" aria-label="Rolar ${s.n} (${LV[lv]})">${DIE}<b></b></button><span class="sq" title="${an}">${ea}</span>`);
     const ab_=mk('button','ab',ab);ab_.title='Trocar atributo da perícia';ab_.onclick=()=>{s.a=A[(A.findIndex(a=>a[0]===s.a)+1)%7][0];render()};
     r.querySelector('.sq').after(ab_);
@@ -265,11 +277,13 @@ function render(){
     const dd=r.querySelector('.die');dd.onclick=()=>roll(dd,s.n,mod(ea),lv+pb,s.sp&&!lv);
     const rx=r.querySelector('.x');if(rx)rx.onclick=e=>{e.stopPropagation();S.skills.splice(i,1);render()};
     $(i<half?'sk1':'sk2').append(r)});
-  $('tals').innerHTML='';(APT[S.apt]||[]).forEach((t,i)=>{const k=S.apt+i,e=mk('div','tal',`<div class="tt">${t[2]?`<input type="checkbox" class="tg" ${S.toff[k]?'':'checked'} aria-label="Ativar bônus de ${t[0]}" title="Ativar ou desativar o bônus"> `:''}${t[0]}<small> · aptidão</small></div><div class="td">${t[1]}</div>${t[2]?`<div class="bonus">Bônus: ${describe(t[2])}</div>`:''}`);
+  $('tals').innerHTML='';const AP=APTS.map[S.apt];
+  if(AP&&Object.keys(AP.skills||{}).length)$('tals').append(mk('div','bonus',`Aptidão concede: ${Object.entries(AP.skills).map(([n,l])=>`${esc(n)} → ${LV[l]}`).join(' · ')}`));
+  ((AP||{}).talents||[]).forEach(t=>{const k=S.apt+t.id,e=mk('div','tal',`<div class="tt">${t.bon?`<input type="checkbox" class="tg" ${S.toff[k]?'':'checked'} aria-label="Ativar bônus de ${esc(t.t)}" title="Ativar ou desativar o bônus"> `:''}${esc(t.t)}<small> · aptidão</small></div><div class="td">${esc(t.d)}</div>${t.bon?`<div class="bonus">Bônus: ${esc(describe(t.bon))}</div>`:''}`);
     const c=e.querySelector('.tg');if(c)c.onchange=()=>{S.toff[k]=!c.checked;render()};$('tals').append(e)});
   const uh=mk('div','','');$('tals').append(uh);talents(uh,S.tals,render);
   img('art',S.img);$('rm').hidden=!S.img;
-    renderPot();renderInv();
+    renderPot();
   save()}
 
 const ARW='img/seta.png';
@@ -278,7 +292,7 @@ const SEC=[['ch','Características'],['hab','Novas Habilidades'],['mel','Habilid
 const PN={arbitro:'Caminho do Árbitro',saqueador:'Caminho do Saqueador',erudito:'Caminho do Erudito'};
 const readImg=(e,cb,max=640)=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/webp',.85))};im.onerror=()=>toast('Imagem inválida');im.src=r.result};r.readAsDataURL(f)};
 function describe(b){return b.split(';').map(x=>{x=x.trim();let m;
-  if(m=/^mestre:(.+)$/i.exec(x))return `${m[1].trim()} vira Mestre`;
+  if(m=/^(aprendiz|apto|mestre|gr[aã]o-?\s*mestre):(.+)$/i.exec(x)){const nm=nz(m[1]).replace(/[-\s]/g,'');return `${m[2].trim()} vira ${{aprendiz:'Aprendiz',apto:'Apto',mestre:'Mestre',graomestre:'Grão-Mestre'}[nm]} (no mínimo)`}
   if(m=/^teste:(.+?)([+-]\d+)$/i.exec(x))return `${m[2]} em testes de ${m[1].trim()}`;
   if(m=/^(.+?)([+-]\d+)$/.exec(x))return `${m[2]} ${m[1].trim()}`;return x}).filter(Boolean).join(' · ')}
 function layerEl(n){const p=pxPath(),cam=pxCam(),Ly=lay(p,n),sec=mk('section','layer'+(n<cam?' dim':''),`<h3>Camada ${n}${Ly.n?' · '+esc(Ly.n):''}</h3>`);
@@ -324,7 +338,7 @@ async function flush(){clearTimeout(saveT);saveT=null;if(saving){saveT=setTimeou
 addEventListener('pagehide',()=>{if(pending()&&SH)try{fetch('/api/sheets/'+SH.id,{method:'PATCH',keepalive:true,credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},body:JSON.stringify({patch:diffPatch()})})}catch(e){}});
 
 const normPot=p=>({pd:(p&&p.pd)||{},pimgs:(p&&p.pimgs)||{},paths:(p&&p.paths)||{},order:(p&&p.order)||[]});
-async function loadCamp(cid){const r=await api('GET','/api/campaigns/'+cid);CAMP=Object.assign({},r.campaign,{role:r.role,me:r.me,members:r.members,sheets:r.sheets});CP=normPot(r.potions)}
+async function loadCamp(cid){const r=await api('GET','/api/campaigns/'+cid);CAMP=Object.assign({},r.campaign,{role:r.role,me:r.me,members:r.members,sheets:r.sheets});CP=normPot(r.potions);APTS=r.aptitudes||{order:[],map:{}}}
 let ES=null,ESid='',rT=null;
 function listen(cid){if(ES&&ESid===cid)return;stopES();ESid=cid;ES=new EventSource('/api/events?campaign='+encodeURIComponent(cid));
   ES.addEventListener('changed',refreshSoon);ES.addEventListener('kicked',()=>{stopES();toast('Você foi removido da campanha.');CAMP=null;SH=null;go('camps')});ES.onerror=()=>setStatus('Reconectando…');ES.onopen=()=>{if(STAT==='Reconectando…'){setStatus('Salvo');refreshSoon()}}}
@@ -336,13 +350,13 @@ async function refreshAll(){if(!ME||!CAMP||saving)return;
     try{if(SH.summary){const r=await api('GET','/api/sheets/'+SH.id);if(!r.summaryOnly){route();return}SH.sum=r.summary}else if(e.rev>SH.rev){await reloadSheet()}}catch(x){return}}
   if(CUR!=='camps'&&CUR!=='auth')safeRender()}
 async function reloadSheet(force){const r=await api('GET','/api/sheets/'+SH.id);if(r.summaryOnly){route();return}
-  const n=norm(r.data);KEYS.forEach(k=>{const loc=JSON.stringify(S[k])!==JSON.stringify(BASE[k]);if(force||!loc)S[k]=clone(n[k])});BASE=clone(r.data||{});SH.rev=r.rev;INV=r.inventory||[];if(pending())save()}
-function repaint(){if(CUR==='cpot'){potHeader();renderPot()}else if(CUR==='camp')renderCamp();else if(CUR==='sum')renderSummary();else if(CUR==='sheet'||CUR==='spot')render()}
+  const n=norm(r.data);KEYS.forEach(k=>{const loc=JSON.stringify(S[k])!==JSON.stringify(BASE[k]);if(force||!loc)S[k]=clone(n[k])});BASE=clone(r.data||{});SH.rev=r.rev;ITEMS=r.items||[];if(pending())save()}
+function repaint(){if(CUR==='cpot'){potHeader();renderPot()}else if(CUR==='camp')renderCamp();else if(CUR==='sum')renderSummary();else if(CUR==='sheet'||CUR==='spot')render();else if(CUR==='inv')renderItems()}
 let pendingRender=false;
 function safeRender(){const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest('.frame')){pendingRender=true;return}repaint()}
 addEventListener('focusout',()=>{if(pendingRender)setTimeout(()=>{const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){pendingRender=false;repaint()}},60)});
 
-let SET={game_title:'Ficha Virtual',game_description:'',recovery:false},INV=[];
+let SET={game_title:'Ficha Virtual',game_description:'',recovery:false};
 async function loadSettings(){try{SET=await api('GET','/api/settings');document.title=SET.game_title}catch(e){}}
 const avHtml=(u,sz=28)=>u.has_avatar?`<img class="av" style="width:${sz}px;height:${sz}px" src="/api/avatar/${u.id||u.user_id}?v=${u.avatar_v}" alt="">`:`<span class="av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.5)}px">${esc((u.username||'?')[0].toUpperCase())}</span>`;
 function renderBar(){const b=$('bar');b.hidden=!ME;if(!ME)return;
@@ -381,14 +395,36 @@ function renderProfile(){const v=$('v-app');
   const p1=inp('','Senha atual','password'),p2=inp('','Nova senha (mínimo 8 caracteres)','password'),pb=mk('button','btn','Alterar senha');pb.onclick=run(()=>api('POST','/api/profile/password',{current_password:p1.value,new_password:p2.value}),'Senha alterada');b.append(mk('h2','','Senha'),p1,p2,pb);
   const lo=mk('button','btn','Encerrar sessão');lo.onclick=()=>$('out').click();b.append(mk('h2','','Sessão'),lo)}
 
-function potOptions(){const o=[];(CP.order||[]).forEach(slug=>{const lays=CP.pd[slug]||{};Object.keys(lays).sort((a,b)=>b-a).forEach(n=>{const y=lays[n];if(y.id)o.push([y.id,`${pathName(slug)} · Camada ${n} · ${y.n}`])})});return o}
-function renderInv(){const h=$('inv');if(!h||!SH||SH.summary)return;h.innerHTML='';
-  INV.forEach(it=>{const r=mk('div','mrow',`<span>${esc(it.name)}${it.status!=='active'?' <i class="bn">(indisponível)</i>':''}</span><button class="sm" aria-label="Diminuir">−</button><span class="ch">${it.quantity}</span><button class="sm" aria-label="Aumentar">+</button>`);
-    const b=r.querySelectorAll('button');b[0].onclick=()=>setInv(it.potion_id,it.quantity-1);b[1].onclick=()=>setInv(it.potion_id,it.quantity+1);h.append(r)});
-  if(!INV.length)h.append(mk('p','mut','Nenhuma poção no inventário.'));
-  const o=potOptions();if(o.length){const f=mk('div','add',`<select aria-label="Poção">${o.map(x=>`<option value="${x[0]}">${esc(x[1])}</option>`).join('')}</select><button class="btn">Adicionar</button>`);
-    f.lastChild.onclick=()=>setInv(f.firstChild.value,(INV.find(i=>i.potion_id===f.firstChild.value)||{quantity:0}).quantity+1);h.append(f)}}
-async function setInv(pid,q){try{const r=await api('PUT','/api/sheets/'+SH.id+'/inventory',{potion_id:pid,quantity:Math.max(0,q)});INV=r.inventory;SH.rev=r.rev;renderInv()}catch(e){toast(e.message)}}
+/* ===== inventário de itens (por ficha; foto e descrição opcionais) ===== */
+let ITEMS=[];
+function itemForm(it,done){const f=mk('div','itemform',''),inp=(v,ph)=>{const e=document.createElement('input');e.value=v||'';e.placeholder=ph;e.maxLength=80;e.setAttribute('aria-label',ph);return e};
+  const nm=inp(it&&it.name,'Nome do item'),qty=document.createElement('input');qty.type='number';qty.min=0;qty.max=9999;qty.value=it?it.quantity:1;qty.setAttribute('aria-label','Quantidade');
+  let hasD=!!(it&&it.description),hasI=!!(it&&it.has_image),wantI=false,newImg;
+  const dBox=mk('div','',''),iBox=mk('div','',''),dBtn=mk('button','link',''),iBtn=mk('button','link',''),ta=document.createElement('textarea');ta.rows=3;ta.maxLength=2000;ta.placeholder='Descrição do item';ta.value=it?it.description:'';
+  const im=document.createElement('img');im.className='limg';im.alt='';const fi=document.createElement('input');fi.type='file';fi.accept='image/*';
+  if(hasI)im.src='/api/items/'+it.id+'/image?v='+it.updated_at;
+  const paint=()=>{dBox.innerHTML='';iBox.innerHTML='';if(hasD)dBox.append(ta);if(hasI)iBox.append(im);else if(wantI)iBox.append(fi);
+    dBtn.textContent=hasD?'Remover descrição':'+ Descrição';iBtn.textContent=hasI?'Remover foto':(wantI?'Cancelar foto':'+ Foto')};
+  fi.onchange=e=>readImg(e,d=>{newImg=d;im.src=d;hasI=true;wantI=false;paint()},480);
+  dBtn.onclick=()=>{hasD=!hasD;if(!hasD)ta.value='';paint()};iBtn.onclick=()=>{if(hasI){hasI=false;newImg='';wantI=false;im.removeAttribute('src')}else wantI=!wantI;paint()};
+  const ok=mk('button','btn',it?'Salvar':'Criar item');ok.onclick=async()=>{try{
+    const body={name:nm.value,quantity:Math.trunc(+qty.value)||0,description:hasD?ta.value:''};if(newImg!==undefined)body.image=hasI?newImg:'';
+    const r=it?await api('PATCH','/api/items/'+it.id,body):await api('POST','/api/sheets/'+SH.id+'/items',body);ITEMS=r.items;SH.rev=r.rev;done()}catch(e){toast(e.message)}};
+  const ql=mk('label','q','<span>Quantidade</span>');ql.append(qty);f.append(nm,ql);const row=mk('div','mrow','');row.append(dBtn,iBtn);f.append(row,dBox,iBox,ok);if(it){const c=mk('button','link','Cancelar');c.onclick=done;f.append(c)}paint();return f}
+function renderItems(){const h=$('invc');if(!h||!SH||SH.summary)return;h.innerHTML='';
+  h.append(mk('h2','','Novo item'),itemForm(null,renderItems));h.append(mk('h2','','Seus itens'));
+  if(!ITEMS.length)h.append(mk('p','mut','Nenhum item ainda. Crie o primeiro acima.'));
+  const g=mk('div','icards','');
+  ITEMS.forEach(it=>{const c=mk('div','icard',`${it.has_image?`<img class="iimg" src="/api/items/${it.id}/image?v=${it.updated_at}" alt="">`:''}<div class="ibody"><b>${esc(it.name)}</b>${it.description?`<p class="ldesc">${esc(it.description)}</p>`:''}</div>`);
+    const q=mk('div','mrow',`<button class="sm" aria-label="Diminuir">−</button><span class="ch">${it.quantity}</span><button class="sm" aria-label="Aumentar">+</button>`),b=q.querySelectorAll('button');
+    const set=async n=>{try{const r=await api('PATCH','/api/items/'+it.id,{quantity:Math.max(0,n)});ITEMS=r.items;SH.rev=r.rev;renderItems()}catch(e){toast(e.message)}};b[0].onclick=()=>set(it.quantity-1);b[1].onclick=()=>set(it.quantity+1);
+    const ed=mk('button','link','Editar'),del=mk('button','link','Excluir');
+    ed.onclick=()=>{c.replaceWith(itemForm(it,renderItems))};del.onclick=async()=>{if(confirm('Excluir "'+it.name+'"?'))try{const r=await api('DELETE','/api/items/'+it.id);ITEMS=r.items;SH.rev=r.rev;renderItems()}catch(e){toast(e.message)}};
+    q.append(ed,del);c.querySelector('.ibody').append(q);g.append(c)});h.append(g)}
+const RAIL=[['camp','Campanha','<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>'],['sheet','Ficha','<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/>'],['inv','Inventário','<path d="M6 8h12l1 12H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 13h6"/>']];
+function renderRail(){const r=$('rail'),on=!!SH&&!SH.summary&&!!CAMP&&['sheet','spot','inv'].includes(CUR);r.hidden=!on;document.body.classList.toggle('rail-on',on);if(!on)return;
+  const cur=CUR==='inv'?'inv':'sheet',href={camp:'#c/'+CAMP.id,sheet:'#s/'+SH.id,inv:'#s/'+SH.id+'/inventario'};
+  r.innerHTML=RAIL.map(([k,l,p])=>`<a href="${href[k]}" class="${k===cur?'on':''}" ${k===cur?'aria-current="page"':''} title="${l}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</a>`).join('')}
 async function loadDev(){if(window.renderDev)return;await new Promise((ok,no)=>{const s=document.createElement('script');s.src='/api/dev/panel.js';s.onload=ok;s.onerror=()=>no(new Error('Painel indisponível'));document.head.append(s)})}
 async function renderCamps(){const r=await api('GET','/api/campaigns'),v=$('v-app');
   v.innerHTML=`<header><h2 style="margin:0;font-size:30px;flex:1">Campanhas</h2></header><div class="rule"></div><div class="paths" id="cl"></div><div class="forms"><div><h2>Criar campanha</h2><div class="add"><input id="cn" maxlength="60" placeholder="Nome da campanha"><button class="btn" id="cc">Criar</button></div></div><div><h2>Entrar com código</h2><div class="add"><input id="cj" maxlength="8" placeholder="Código de convite"><button class="btn" id="cjb">Entrar</button></div></div></div>`;
@@ -426,7 +462,7 @@ function renderCamp(){const c=CAMP,M=isMaster(),v=$('v-app');
 function renderSummary(){const s=SH.sum,v=$('v-app');
   v.innerHTML=`<header><a class="nav" href="#c/${CAMP.id}">‹ Campanha</a><h2 style="margin:0;font-size:30px;flex:1">${esc(s.name||'Sem nome')}</h2><span class="tag">RESUMO</span></header><div class="rule"></div><div class="sum"><div class="art has">${s.img?`<img alt="" src="${s.img}">`:''}</div><div><h2>Atributos</h2>${A.map(([k,n])=>{const x=(s.attrs&&s.attrs[k])||0;return `<div class="at"><span class="an">${n}</span><span class="ch">${x}</span><span class="mod">${fm(mod(x))}</span></div>`}).join('')}<p class="mut">Versão resumida: somente o dono da ficha e o mestre veem os demais dados.</p></div></div>`}
 function potHeader(){const camp=CUR==='cpot';$('lnkPBack').href=camp?'#c/'+CAMP.id:'#s/'+SH.id;$('lnkPBack').textContent=camp?'‹ Campanha':'‹ Voltar à ficha';$('ptitle').textContent=camp?'Poções da Campanha':'Habilidades da Poção'}
-const show=n=>{['app','ficha','pocao'].forEach(x=>$('v-'+x).hidden=x!==n);$('log').hidden=true};
+const show=n=>{['app','ficha','pocao','inv'].forEach(x=>$('v-'+x).hidden=x!==n);$('log').hidden=true};
 let routing=0;
 async function route(){const my=++routing;
   try{
@@ -442,18 +478,17 @@ async function route(){const my=++routing;
     }else if(seg[0]==='s'&&seg[1]){
       const r=await api('GET','/api/sheets/'+seg[1]);await loadCamp(r.campaign_id);listen(r.campaign_id);if(my!==routing)return;
       if(r.summaryOnly){SH={id:seg[1],owner_id:r.owner_id,rev:r.rev,summary:true,sum:r.summary};CUR='sum';show('app');renderSummary()}
-      else{SH={id:seg[1],owner_id:r.owner_id,rev:r.rev};BASE=clone(r.data||{});S=norm(r.data);INV=r.inventory||[];PX={mode:'sheet',path:''};
+      else{SH={id:seg[1],owner_id:r.owner_id,rev:r.rev};BASE=clone(r.data||{});S=norm(r.data);ITEMS=r.items||[];PX={mode:'sheet',path:''};
         $('lnkBack').href='#c/'+CAMP.id;$('lnkPocao').href='#s/'+SH.id+'/pocao';
-        if(seg[2]==='pocao'){CUR='spot';show('pocao');potHeader()}else{CUR='sheet';show('ficha')}render()}
+        if(seg[2]==='pocao'){CUR='spot';show('pocao');potHeader();render()}else if(seg[2]==='inventario'){CUR='inv';show('inv');$('lnkIBack').href='#s/'+SH.id;render();renderItems()}else{CUR='sheet';show('ficha');render()}}
     }else{stopES();CAMP=null;SH=null;CUR='camps';show('app');await renderCamps()}
-    if(my===routing){renderBar();scrollTo(0,0)}
+    if(my===routing){renderBar();renderRail();scrollTo(0,0)}
   }catch(e){
     if(e.status===401){ME=null;if(my===routing)route();return}
     toast(e.message);if(location.hash!=='#camps'){SH=null;location.hash='#camps'}else{show('app');$('v-app').innerHTML='<p class="mut">Não foi possível carregar.</p>'}}}
 async function boot(){await loadSettings();try{ME=(await api('GET','/api/me')).user}catch(e){ME=null}route()}
 
 $('camada').innerHTML=L.map(n=>`<option>${n}</option>`).join('');
-$('apt').innerHTML='<option value="">APTIDÃO</option>'+Object.keys(APT).map(a=>`<option>${a}</option>`).join('');
 $('nsa').innerHTML=A.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('');
 $('leg').innerHTML=LV.map((l,i)=>`<span><i style="--c:var(--l${i})"></i>${l}${i?' +'+i:''}</span>`).join('')+'<span>Clique no nome da perícia para mudar o nível. * Especial: sem treino, rola com desvantagem (−1d6).</span>';
 $('name').oninput=e=>{S.name=e.target.value;save()};$('apt').onchange=e=>{S.apt=e.target.value;render()};
